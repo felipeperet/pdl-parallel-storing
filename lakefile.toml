@@ -1,0 +1,10 @@
+name = "pdl-parallel-storing"
+version = "0.1.0"
+defaultTargets = ["pdl-parallel-storing"]
+
+[[lean_lib]]
+name = "PdlParallelStoring"
+
+[[lean_exe]]
+name = "pdl-parallel-storing"
+root = "Main"
