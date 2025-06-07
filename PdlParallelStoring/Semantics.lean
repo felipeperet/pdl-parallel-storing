@@ -92,13 +92,13 @@ structure StructuredFrame where
   respects_equiv : ∀ π s₁ s₂, R π s₁ s₂ → structStates.E s₁ s₂
 
 -- Def) A structured frame F is proper when it satisfies the following conditions:
-  def isProperStructuredFrame (F : StructuredFrame) : Prop :=
-    let R := F.R
-    let star := F.structStates.star
-    (∀ s' t', R π.s₁ s' t' ↔ ∃ s t, (s' = s) ∧ (t' = star s t)) ∧
-    (∀ s' t', R π.s₂ s' t' ↔ ∃ s t, (s' = t) ∧ (t' = star s t)) ∧
-    (∀ s' t', R π.r₁ s' t' ↔ ∃ s t, (s' = star s t) ∧ (t' = s)) ∧
-    (∀ s' t', R π.r₂ s' t' ↔ ∃ s t, (s' = star s t) ∧ (t' = t)) ∧
-    (∀ π₁ π₂ s' t', R (π₁ ‖ π₂) s' t' ↔ ∃ s₁ t₁ s₂ t₂, (s' = star s₁ t₁) ∧ (t' = star s₂ t₂) ∧
-      R π₁ s₁ s₂ ∧
-      R π₂ t₁ t₂)
+def isProperStructuredFrame (F : StructuredFrame) : Prop :=
+  let R := F.R
+  let star := F.structStates.star
+  (∀ s' t', R π.s₁ s' t' ↔ ∃ s t, (s' = s) ∧ (t' = star s t)) ∧
+  (∀ s' t', R π.s₂ s' t' ↔ ∃ s t, (s' = t) ∧ (t' = star s t)) ∧
+  (∀ s' t', R π.r₁ s' t' ↔ ∃ s t, (s' = star s t) ∧ (t' = s)) ∧
+  (∀ s' t', R π.r₂ s' t' ↔ ∃ s t, (s' = star s t) ∧ (t' = t)) ∧
+  (∀ π₁ π₂ s' t', R (π₁ ‖ π₂) s' t' ↔ ∃ s₁ t₁ s₂ t₂, (s' = star s₁ t₁) ∧ (t' = star s₂ t₂) ∧
+    R π₁ s₁ s₂ ∧
+    R π₂ t₁ t₂)
