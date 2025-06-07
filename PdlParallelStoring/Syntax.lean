@@ -39,7 +39,7 @@ notation:50 "⟨" α "⟩" φ => diamond α φ
 infixl:80 ";" => comp
 infixr:60 "∪" => choice
 postfix:max "*" => iter
-infixr:75 "||" => parallel
+infixr:75 "‖" => parallel
 prefix:max "?" => test
 
 ----------------------------------------------------------------------------------------------------
