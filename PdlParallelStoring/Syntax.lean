@@ -38,7 +38,7 @@ notation:50 "⟨" α "⟩" φ => diamond α φ
 -- Sugar syntax for primitive programs.
 infixl:80 ";" => comp
 infixr:60 "∪" => choice
-postfix:max "⋆" => iter
+postfix:max "*" => iter
 infixr:75 "||" => parallel
 prefix:max "?" => test
 

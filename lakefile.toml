@@ -8,3 +8,7 @@ name = "PdlParallelStoring"
 [[lean_exe]]
 name = "pdl-parallel-storing"
 root = "Main"
+
+[[require]]
+name = "mathlib"
+scope = "leanprover-community"
