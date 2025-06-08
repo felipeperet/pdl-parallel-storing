@@ -3,9 +3,9 @@
 ----------------------------------------------------------------------------------------------------
 -- We define propositions and instructions as aliases for strings.
 abbrev Ψ := String
+
 -- Mutual recursive syntax for formulae and programs.
 mutual
-  -- Abstract syntax tree for Formulae.
   inductive Φ where
     | false : Φ
     | atomic : Ψ → Φ
@@ -13,7 +13,6 @@ mutual
     | conj : Φ → Φ → Φ
     | diamond : π → Φ → Φ
     deriving BEq
-  -- Abstract syntax tree for Programs.
   inductive π where
     | atomic : Ψ → π
     | comp : π → π → π
@@ -29,13 +28,11 @@ mutual
 end
 open Φ π
 
--- Sugar syntax for primitive formulae.
 notation "⊥" => false
 prefix:max "¬" => neg
 infixr:70 "∧" => conj
 notation:50 "⟨" α "⟩" φ => diamond α φ
 
--- Sugar syntax for primitive programs.
 infixl:80 ";" => comp
 infixr:60 "∪" => choice
 postfix:max "*" => iter
