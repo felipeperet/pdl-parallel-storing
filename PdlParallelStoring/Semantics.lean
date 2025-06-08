@@ -61,17 +61,17 @@ class State (S : Type) where
 --        - Rπ ⊆ E, for each program π,
 --        - (S, {Rπ : π is a program}) is a frame.
 class Structured (F : Frame) where
-  [states : State F.W]
-  respects_equiv : ∀ π s₁ s₂, F.R π s₁ s₂ → states.E s₁ s₂
+  [S : State F.W]
+  respects_equiv : ∀ π s₁ s₂, F.R π s₁ s₂ → S.E s₁ s₂
 
 -- Def) A structured frame F is proper when it satisfies the following conditions:
-class Proper (F : Frame) [S : Structured F] : Prop where
-  s₁ : ∀ s' t', F.R π.s₁ s' t' ↔ ∃ s t, (s' = s) ∧ (t' = S.states.star s t)
-  s₂ : ∀ s' t', F.R π.s₂ s' t' ↔ ∃ s t, (s' = t) ∧ (t' = S.states.star s t)
-  r₁ : ∀ s' t', F.R π.r₁ s' t' ↔ ∃ s t, (s' = S.states.star s t) ∧ (t' = s)
-  r₂ : ∀ s' t', F.R π.r₂ s' t' ↔ ∃ s t, (s' = S.states.star s t) ∧ (t' = t)
+class Proper (F : Frame) [SF : Structured F] : Prop where
+  s₁ : ∀ s' t', F.R π.s₁ s' t' ↔ ∃ s t, (s' = s) ∧ (t' = SF.S.star s t)
+  s₂ : ∀ s' t', F.R π.s₂ s' t' ↔ ∃ s t, (s' = t) ∧ (t' = SF.S.star s t)
+  r₁ : ∀ s' t', F.R π.r₁ s' t' ↔ ∃ s t, (s' = SF.S.star s t) ∧ (t' = s)
+  r₂ : ∀ s' t', F.R π.r₂ s' t' ↔ ∃ s t, (s' = SF.S.star s t) ∧ (t' = t)
   parallel : ∀ π₁ π₂ s' t', F.R (π₁ ‖ π₂) s' t' ↔
-    ∃ s₁ t₁ s₂ t₂, (s' = S.states.star s₁ t₁) ∧ (t' = S.states.star s₂ t₂) ∧
+    ∃ s₁ t₁ s₂ t₂, (s' = SF.S.star s₁ t₁) ∧ (t' = SF.S.star s₂ t₂) ∧
     F.R π₁ s₁ s₂ ∧ F.R π₂ t₁ t₂
 
 -- Def) An PRSPDL model is a proper standard model.
