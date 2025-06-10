@@ -1,4 +1,3 @@
-import Mathlib.Logic.Function.Defs
 import Mathlib.Logic.Relation
 
 import PdlParallelStoring.Syntax
@@ -21,7 +20,7 @@ import PdlParallelStoring.Syntax
 --        - V : Φ → 2^W is a valuation function mapping atomic propositions into subsets of W.
 structure Model where
   F : Frame
-  V : (Ψ → F.W → Prop)
+  V : Ψ → F.W → Prop
 
 -- Def) Satisfaction relation.
 def satisfies (M : Model) (w : M.F.W) : Φ → Prop
@@ -35,10 +34,10 @@ notation:20 M "," w "⊨" φ => satisfies M w φ
 
 -- Def) A model is standard when it satisfies the following conditions:
 class Standard (M : Model) : Prop where
-  comp : ∀ α β, M.F.R (α ; β) = Relation.Comp (M.F.R α) (M.F.R β)
-  choice : ∀ α β, M.F.R (α ∪ β) = λ w₁ w₂ => M.F.R α w₁ w₂ ∨ M.F.R β w₁ w₂
-  iter : ∀ α, M.F.R (α *) = Relation.ReflTransGen (M.F.R α)
-  test : ∀ φ, M.F.R (? (φ)) = λ w₁ w₂ => (w₁ = w₂) ∧ (M, w₁ ⊨ φ)
+  comp : ∀ {α β}, M.F.R (α ; β) = Relation.Comp (M.F.R α) (M.F.R β)
+  choice : ∀ {α β}, M.F.R (α ∪ β) = λ w₁ w₂ => M.F.R α w₁ w₂ ∨ M.F.R β w₁ w₂
+  iter : ∀ {α}, M.F.R (α *) = Relation.ReflTransGen (M.F.R α)
+  test : ∀ {φ}, M.F.R (? (φ)) = λ w₁ w₂ => (w₁ = w₂) ∧ (M, w₁ ⊨ φ)
 
 ----------------------------------------------------------------------------------------------------
 -- PRSPDL Semantics
@@ -53,7 +52,7 @@ class State (S : Type) where
   E : S → S → Prop
   [equiv : Equivalence E]
   star : S → S → S
-  [inject : Function.Injective (λ (p : S × S) => star p.1 p.2)]
+  [inject : ∀ {s₁ t₁ s₂ t₂}, star s₁ t₁ = star s₂ t₂ ↔ (s₁ = s₂) ∧ t₁ = t₂]
 
 infixr:85 "⋆" => State.star
 
@@ -64,17 +63,17 @@ infixr:85 "⋆" => State.star
 --        - (S, {Rπ : π is a program}) is a frame.
 class Structured (F : Frame) where
   [S : State F.W]
-  respects_equiv : ∀ π s₁ s₂, F.R π s₁ s₂ → S.E s₁ s₂
+  respects_equiv : ∀ {π s₁ s₂}, F.R π s₁ s₂ → S.E s₁ s₂
 
 instance {F : Frame} [SF : Structured F] : State F.W := SF.S
 
 -- Def) A structured frame F is proper when it satisfies the following conditions:
-class Proper (F : Frame) [SF : Structured F] : Prop where
-  s₁ : ∀ s' t', F.R π.s₁ s' t' ↔ ∃ s t, (s' = s) ∧ t' = s ⋆ t
-  s₂ : ∀ s' t', F.R π.s₂ s' t' ↔ ∃ s t, (s' = t) ∧ t' = s ⋆ t
-  r₁ : ∀ s' t', F.R π.r₁ s' t' ↔ ∃ s t, (s' = s ⋆ t) ∧ t' = s
-  r₂ : ∀ s' t', F.R π.r₂ s' t' ↔ ∃ s t, (s' = s ⋆ t) ∧ t' = t
-  parallel : ∀ π₁ π₂ s' t', F.R (π₁ ‖ π₂) s' t' ↔
+class Proper (F : Frame) [Structured F] : Prop where
+  s₁ : ∀ {s' t'}, F.R π.s₁ s' t' ↔ ∃ s t, (s' = s) ∧ t' = s ⋆ t
+  s₂ : ∀ {s' t'}, F.R π.s₂ s' t' ↔ ∃ s t, (s' = t) ∧ t' = s ⋆ t
+  r₁ : ∀ {s' t'}, F.R π.r₁ s' t' ↔ ∃ s t, (s' = s ⋆ t) ∧ t' = s
+  r₂ : ∀ {s' t'}, F.R π.r₂ s' t' ↔ ∃ s t, (s' = s ⋆ t) ∧ t' = t
+  parallel : ∀ {π₁ π₂ s' t'}, F.R (π₁ ‖ π₂) s' t' ↔
     ∃ s₁ t₁ s₂ t₂, (s' = s₁ ⋆ t₁) ∧ (t' = s₂ ⋆ t₂) ∧
     F.R π₁ s₁ s₂ ∧ F.R π₂ t₁ t₂
 
