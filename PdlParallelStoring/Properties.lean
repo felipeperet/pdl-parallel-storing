@@ -13,11 +13,14 @@ def s₁_comp_r₁ (F : Frame) [Structured F] [P : Proper F] :
     rw [P.r₁] at hr₁
     obtain ⟨s₁, t₁, hs_eq, ht_eq⟩ := hs₁
     obtain ⟨s₂, t₂, ht_eq₂, hu_eq⟩ := hr₁
-    have h_eq : s₁ ⋆ t₁ = s₂ ⋆ t₂ := by
-      rw [← ht_eq]
-      rw [ht_eq₂]
+    have h_eq : s₁ ⋆ t₁ = s₂ ⋆ t₂ := by rw [← ht_eq, ht_eq₂]
     have s₁_eq_s₂ : s₁ = s₂ := (State.inject.mp h_eq).1
-    rw [hs_eq]
-    rw [hu_eq]
+    rw [hs_eq, hu_eq]
     exact s₁_eq_s₂
-  case mpr => sorry
+  case mpr =>
+    intro h_eq
+    unfold Relation.Comp
+    use s ⋆ s
+    simp [P.s₁, P.r₁]
+    use u
+    rw [h_eq]

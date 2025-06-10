@@ -30,14 +30,12 @@ def satisfies (M : Model) (w : M.F.W) : Φ → Prop
   | Φ.conj φ₁ φ₂ => satisfies M w φ₁ ∧ satisfies M w φ₂
   | Φ.diamond α φ => ∃ w', M.F.R α w w' ∧ satisfies M w' φ
 
-notation:20 M "," w "⊨" φ => satisfies M w φ
-
 -- Def) A model is standard when it satisfies the following conditions:
 class Standard (M : Model) : Prop where
   comp : ∀ {α β}, M.F.R (α ; β) = Relation.Comp (M.F.R α) (M.F.R β)
   choice : ∀ {α β}, M.F.R (α ∪ β) = λ w₁ w₂ => M.F.R α w₁ w₂ ∨ M.F.R β w₁ w₂
   iter : ∀ {α}, M.F.R (α *) = Relation.ReflTransGen (M.F.R α)
-  test : ∀ {φ}, M.F.R (? (φ)) = λ w₁ w₂ => (w₁ = w₂) ∧ (M, w₁ ⊨ φ)
+  test : ∀ {φ}, M.F.R (? (φ)) = λ w₁ w₂ => (w₁ = w₂) ∧ (satisfies M w₁ φ)
 
 ----------------------------------------------------------------------------------------------------
 -- PRSPDL Semantics
