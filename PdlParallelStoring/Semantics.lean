@@ -17,7 +17,7 @@ import PdlParallelStoring.Syntax
 -- Def) A model is a pair M = (F, V)
 --      where:
 --        - F is a frame,
---        - V : Φ → 2^W is a valuation function mapping atomic propositions into subsets of W.
+--        - V : Φ → 2^W is a valuation function mapping atomic formulae into subsets of W.
 structure Model where
   F : Frame
   V : Ψ → F.W → Prop
@@ -30,12 +30,14 @@ def satisfies (M : Model) (w : M.F.W) : Φ → Prop
   | Φ.conj φ₁ φ₂ => satisfies M w φ₁ ∧ satisfies M w φ₂
   | Φ.diamond α φ => ∃ w', M.F.R α w w' ∧ satisfies M w' φ
 
+notation:40 "(" κ "," s ")" "⊨" φ => satisfies κ s φ
+
 -- Def) A model is standard when it satisfies the following conditions:
 class Standard (M : Model) : Prop where
   comp : ∀ {α β}, M.F.R (α ; β) = Relation.Comp (M.F.R α) (M.F.R β)
   choice : ∀ {α β}, M.F.R (α ∪ β) = λ w₁ w₂ => M.F.R α w₁ w₂ ∨ M.F.R β w₁ w₂
-  iter : ∀ {α}, M.F.R (α *) = Relation.ReflTransGen (M.F.R α)
-  test : ∀ {φ}, M.F.R (? (φ)) = λ w₁ w₂ => (w₁ = w₂) ∧ (satisfies M w₁ φ)
+  iter : ∀ {α}, M.F.R (α ★) = Relation.ReflTransGen (M.F.R α)
+  test : ∀ {φ}, M.F.R (φ ?) = λ w₁ w₂ => (w₁ = w₂) ∧ (satisfies M w₁ φ)
 
 ----------------------------------------------------------------------------------------------------
 -- PRSPDL Semantics
@@ -50,7 +52,7 @@ class State (S : Type) where
   E : S → S → Prop
   [equiv : Equivalence E]
   star : S → S → S
-  [inject : ∀ {s₁ t₁ s₂ t₂}, star s₁ t₁ = star s₂ t₂ ↔ (s₁ = s₂) ∧ t₁ = t₂]
+  [inject : ∀ {s₁ t₁ s₂ t₂}, (star s₁ t₁ = star s₂ t₂) ↔ (s₁ = s₂) ∧ t₁ = t₂]
 
 infixr:85 "⋆" => State.star
 
@@ -77,3 +79,26 @@ class Proper (F : Frame) [Structured F] : Prop where
 
 -- Def) An PRSPDL model is a proper standard model.
 class ProperStandard (M : Model) [Standard M] [Structured M.F] [Proper M.F] : Prop
+
+-- Def) Global satisfaction.
+--      That is, a formula is satisfied in every possible state of a model.
+def globally_satisfies (M : Model) (φ : Φ) := ∀ {w : M.F.W}, (M, w) ⊨ φ
+
+notation:40 M "⊨" φ => globally_satisfies M φ
+
+-- Def) Validity in a frame.
+--      That is, a formula is satisfied in every possible model of a frame.
+def validInFrame (F : Frame) (φ : Φ) : Prop := ∀ {M : Model}, (M.F = F) → M ⊨ φ
+
+notation:40 F "⊨" φ => validInFrame F φ
+
+-- Def) Global validity.
+--      That is, a formula is valid in every possible frame.
+def valid (φ : Φ) : Prop := ∀ {F : Frame}, F ⊨ φ
+
+notation:40 "⊨" φ => valid φ
+
+-- Def) Semantic equivalence.
+def semEquiv (φ₁ φ₂ : Φ) : Prop := ⊨ (φ₁ ↔ φ₂)
+
+infixl:50 "≡" => semEquiv
