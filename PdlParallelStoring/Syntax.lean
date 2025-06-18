@@ -67,11 +67,13 @@ notation:50 "[" α "]" φ => box α φ
 ----------------------------------------------------------------------------------------------------
 -- Def)   skip α
 --      ≡ ⊤?
-def skip : π := ⊤ ?
+abbrev skip : π :=
+  ⊤ ?
 
 -- Def)   fail α
 --      ≡ ⊥?
-def fail : π := ⊥ ?
+abbrev fail : π :=
+  ⊥ ?
 
 -- Def)   if φ₁ → φ₂ | ... | φₙ → αₙ fi
 --      ≡  φ₁? ; α₁ ∪ ... ∪ φₙ? ; αₙ
@@ -96,7 +98,7 @@ def pdlDo (branches : List (Φ × π)) : π :=
 
 -- Def)   if φ then α else β
 --      ≡ φ? ; α ∪ ¬φ? ; β
-def ifThenElse (φ : Φ) (α β : π) : π :=
+abbrev ifThenElse (φ : Φ) (α β : π) : π :=
   pdlIf [(φ, α), (¬ φ, β)]
 
 notation "If" c:arg "{" t "}" => ifThenElse c t skip
@@ -116,7 +118,7 @@ def example₁ : π :=
 
 -- Def)   while φ do α
 --      ≡ (φ? ; α)★ ; ¬φ?
-def whileDo (φ : Φ) (α : π) : π :=
+abbrev whileDo (φ : Φ) (α : π) : π :=
   pdlDo [(φ, α)]
 
 notation "While" c:arg "{" b "}" => whileDo c b
@@ -137,5 +139,5 @@ def example₂ : π :=
 
 -- Def)   repeat α until φ
 --      ≡ α ; (¬φ? ; α)★ ; φ?
-def repeatUntil (α : π) (φ : Φ) : π :=
+abbrev repeatUntil (α : π) (φ : Φ) : π :=
   α ; whileDo (¬ φ) α
