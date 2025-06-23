@@ -5,14 +5,14 @@ import PdlParallelStoring.Syntax
 ----------------------------------------------------------------------------------------------------
 -- PDL Semantics
 ----------------------------------------------------------------------------------------------------
- -- Def) A frame is a pair F = (W, {Rπ : π is a program})
- --      where:
- --        - W is a non-empty set,
- --        - Rπ ⊆ W × W , for each program π.
- structure Frame where
-   W : Type
-   [nonempty : Nonempty W]
-   R : π → W → W → Prop
+-- Def) A frame is a pair F = (W, {Rπ : π is a program})
+--      where:
+--        - W is a non-empty set,
+--        - Rπ ⊆ W × W , for each program π.
+structure Frame where
+  W : Type
+  [nonempty : Nonempty W]
+  R : π → W → W → Prop
 
 -- Def) A model is a pair M = (F, V)
 --      where:
@@ -82,9 +82,9 @@ class ProperStandard (M : Model) [Standard M] [Structured M.F] [Proper M.F] : Pr
 
 -- Def) Global satisfaction.
 --      That is, a formula is satisfied in every possible state of a model.
-def globally_satisfies (M : Model) (φ : Φ) := ∀ {w : M.F.W}, (M, w) ⊨ φ
+def globallySatisfies (M : Model) (φ : Φ) := ∀ {w : M.F.W}, (M, w) ⊨ φ
 
-notation:40 M "⊨" φ => globally_satisfies M φ
+notation:40 M "⊨" φ => globallySatisfies M φ
 
 -- Def) Validity in a frame.
 --      That is, a formula is satisfied in every possible model of a frame.

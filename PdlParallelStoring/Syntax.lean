@@ -34,9 +34,9 @@ infixr:70 "∧" => conj
 notation:50 "⟨" α "⟩" φ => diamond α φ
 
 infixl:80 ";" => comp
-infixr:60 "∪" => choice
+infixr:70 "∪" => choice
 postfix:max "★" => iter
-infixr:75 "‖" => parallel
+infixr:60 "‖" => parallel
 postfix:max "?" => test
 
 ----------------------------------------------------------------------------------------------------
@@ -104,38 +104,12 @@ abbrev ifThenElse (φ : Φ) (α β : π) : π :=
 notation "If" c:arg "{" t "}" => ifThenElse c t skip
 notation "If" c:arg "{" t "}" "Else" "{" f "}" => ifThenElse c t f
 
-def example₁ : π :=
-  If (atomic "has_fuel") {
-    atomic "move_robot";
-    If (atomic "task_complete") {
-      skip
-    } Else {
-      atomic "move_robot"
-    }
-  } Else {
-    fail     -- cannot proceed without fuel
-  }
-
 -- Def)   while φ do α
 --      ≡ (φ? ; α)★ ; ¬φ?
 abbrev whileDo (φ : Φ) (α : π) : π :=
   pdlDo [(φ, α)]
 
 notation "While" c:arg "{" b "}" => whileDo c b
-
-def example₂ : π :=
-  While (atomic "has_tasks") {
-    If (atomic "has_resources") {
-      atomic "pick_and_place";
-      If (atomic "task_successful") {
-        skip
-      } Else {
-        fail
-      }
-    } Else {
-      fail
-    }
-  }
 
 -- Def)   repeat α until φ
 --      ≡ α ; (¬φ? ; α)★ ; φ?
