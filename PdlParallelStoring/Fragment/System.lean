@@ -10,9 +10,23 @@ open Classical
 -- This is a fragment called RSPDL₀. In this fragment, we do not allow the use of the operators of
 -- test (?), iteration (★) and parallel composition (‖).
 
+-- Def) Provability in RSPDL₀: ⊢ φ means φ is derivable from the axioms and inference rules.
 inductive Provable : Φ → Prop where
-  | taut φ : isTautology φ → Provable φ
-  -- ...
+  -- Axioms
+  | tautology : isTautology φ → Provable φ
+  | composition α β : Provable (([α ; β] φ) ↔ ([α] [β] φ))
+  | choice α β : Provable (([α ∪ β] φ) ↔ (([α] φ) ∧ ([β] φ)))
+  | K α ψ : Provable (([α] (φ → ψ)) → (([α] φ) → ([α] ψ)))
+  | functional : Provable ((⟨π.r₁⟩ φ) → ([π.r₁] φ))
+  | temporal : Provable (φ → ([π.s₁] ⟨π.r₁⟩ φ))
+  | sameDomain : Provable ((⟨π.r₁⟩ ⊤) ↔ (⟨π.r₂⟩ ⊤))
+  | unicity : Provable ((⟨π.s₁ ; π.r₁⟩ φ) ↔ ([π.s₁ ; π.r₁] φ))
+  | storeRestoreId : Provable ([s₁ ; r₂] φ → φ)
+  | storeRestoreDiamond : Provable (φ → ([s₁ ; r₂] ⟨s₁ ; r₂⟩ φ))
+  | storeRestoreIterate : Provable (([s₁ ; r₂] φ) → ([s₁ ; r₂] [s₁ ; r₂] φ))
+  -- Inference Rules
+  | modusPonens ψ : Provable φ → Provable (φ → ψ) → Provable ψ
+  | necessitation π : Provable φ → Provable ([π] φ)
 
 notation:40 "⊢ " φ => Provable φ
 
@@ -51,18 +65,19 @@ lemma evalMatchesSatisfies (M : Model) (w : M.F.W) :
       exfalso
       exact h
 
-lemma tautSound : ∀ {φ}, isTautology φ → (⊨ φ) := by
+lemma tautologySound : ∀ {φ}, isTautology φ → (⊨ φ) := by
   intro φ hTaut
   obtain ⟨hProp, hEval⟩ := hTaut
   intros F M MF w
   let assign := fun ψ => decide (M.V ψ w)
-  have h_true : eval assign φ hProp = Bool.true := hEval assign
-  have key_lemma : (eval assign φ hProp = Bool.true) ↔ ((M, w) ⊨ φ) :=
+  have hTrue : eval assign φ hProp = Bool.true := hEval assign
+  have hLemma : (eval assign φ hProp = Bool.true) ↔ ((M, w) ⊨ φ) :=
     evalMatchesSatisfies M w φ hProp
-  rw [← key_lemma]
-  exact h_true
+  rw [← hLemma]
+  exact hTrue
 
 theorem soundness : ∀ {φ : Φ}, (⊢ φ) → (⊨ φ) := by
   intros φ h
   cases h with
-  | taut t => exact tautSound t
+  | tautology t => exact tautologySound t
+  | _ => sorry
