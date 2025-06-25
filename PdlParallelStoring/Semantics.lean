@@ -79,7 +79,7 @@ class Proper (F : Frame) extends Structured F where
     F.R π₁ s₁ s₂ ∧ F.R π₂ t₁ t₂
 
 -- Def) An PRSPDL model is a proper standard model.
-class ProperStandard (M : Model) extends Standard M, Structured M.F, Proper M.F
+class ProperStandard (M : Model) extends Standard M, Proper M.F
 
 -- Def) Global satisfaction.
 --      That is, the formula is satisfied in every possible state of a proper standard model.
