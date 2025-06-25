@@ -29,15 +29,38 @@ end
 open Φ π
 
 notation "⊥" => false
-prefix:max "¬" => neg
-infixr:70 "∧" => conj
+prefix:max "¬ " => neg
+infixr:70 " ∧ " => conj
 notation:50 "⟨" α "⟩" φ => diamond α φ
 
 infixl:80 ";" => comp
-infixr:70 "∪" => choice
-postfix:max "★" => iter
-infixr:60 "‖" => parallel
-postfix:max "?" => test
+infixr:70 " ∪ " => choice
+postfix:max " ★" => iter
+infixr:60 " ‖ " => parallel
+postfix:max " ?" => test
+
+@[simp]
+def isPropositional : Φ → Prop
+  | Φ.false => True
+  | Φ.atomic _ => True
+  | Φ.neg φ => isPropositional φ
+  | Φ.conj φ₁ φ₂ => isPropositional φ₁ ∧ isPropositional φ₂
+  | Φ.diamond _ _ => False
+
+@[simp]
+def eval (assign : Ψ → Bool) : (φ : Φ) → isPropositional φ → Bool
+  | Φ.false, _ => false
+  | Φ.atomic ψ, _ => assign ψ
+  | Φ.neg φ, h => !(eval assign φ h)
+  | Φ.conj φ₁ φ₂, h =>
+      let h₁ : isPropositional φ₁ := h.1
+      let h₂ : isPropositional φ₂ := h.2
+      (eval assign φ₁ h₁) && (eval assign φ₂ h₂)
+  | Φ.diamond _ _, h => False.elim h
+
+@[simp]
+def isTautology (φ : Φ) : Prop :=
+  ∃ (h : isPropositional φ), ∀ assign, eval assign φ h = Bool.true
 
 ----------------------------------------------------------------------------------------------------
 -- Derived Logical Operators
@@ -48,15 +71,15 @@ notation "⊤" => true
 
 -- Def) φ₁ ∨ φ₂ ≡ ¬ (¬φ₁ ∧ ¬φ₂)
 abbrev disj (φ₁ φ₂ : Φ) : Φ := ¬ ((¬ φ₁) ∧ (¬ φ₂))
-infixr:60 "∨" => disj
+infixr:60 " ∨ " => disj
 
 -- Def) φ₁ → φ₂ ≡ ¬ φ₁ ∨ φ₂
 abbrev impl (φ₁ φ₂ : Φ) : Φ := (¬ φ₁) ∨ φ₂
-infixr:55 "→" => impl
+infixr:55 " → " => impl
 
 -- Def) φ₁ ↔ φ₂ ≡ (φ₁ → φ₂) ∧ (φ₂ → φ₁)
 abbrev bicond (φ₁ φ₂ : Φ) : Φ := (φ₁ → φ₂) ∧ (φ₂ → φ₁)
-infixr:55 "↔" => bicond
+infixr:55 " ↔ " => bicond
 
 -- Def) [α] φ ≡ ¬ ⟨α⟩ ¬φ
 abbrev box (α : π) (φ : Φ) : Φ := ¬ (⟨α⟩ (¬ φ))

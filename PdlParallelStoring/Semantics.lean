@@ -30,7 +30,7 @@ def satisfies (M : Model) (w : M.F.W) : Φ → Prop
   | Φ.conj φ₁ φ₂ => satisfies M w φ₁ ∧ satisfies M w φ₂
   | Φ.diamond α φ => ∃ w', M.F.R α w w' ∧ satisfies M w' φ
 
-notation:40 "(" κ "," s ")" "⊨" φ => satisfies κ s φ
+notation:40 "(" κ "," s ") " " ⊨ " φ => satisfies κ s φ
 
 -- Def) A model is standard when it satisfies the following conditions:
 class Standard (M : Model) : Prop where
@@ -84,21 +84,21 @@ class ProperStandard (M : Model) [Standard M] [Structured M.F] [Proper M.F] : Pr
 --      That is, a formula is satisfied in every possible state of a model.
 def globallySatisfies (M : Model) (φ : Φ) := ∀ {w : M.F.W}, (M, w) ⊨ φ
 
-notation:40 M "⊨" φ => globallySatisfies M φ
+notation:40 M " ⊨ " φ => globallySatisfies M φ
 
 -- Def) Validity in a frame.
 --      That is, a formula is satisfied in every possible model of a frame.
 def validInFrame (F : Frame) (φ : Φ) : Prop := ∀ {M : Model}, (M.F = F) → M ⊨ φ
 
-notation:40 F "⊨" φ => validInFrame F φ
+notation:40 F " ⊨ " φ => validInFrame F φ
 
 -- Def) Global validity.
 --      That is, a formula is valid in every possible frame.
 def valid (φ : Φ) : Prop := ∀ {F : Frame}, F ⊨ φ
 
-notation:40 "⊨" φ => valid φ
+notation:40 "⊨ " φ => valid φ
 
 -- Def) Semantic equivalence.
 def semEquiv (φ₁ φ₂ : Φ) : Prop := ⊨ (φ₁ ↔ φ₂)
 
-infixl:50 "≡" => semEquiv
+infixl:50 " ≡ " => semEquiv
