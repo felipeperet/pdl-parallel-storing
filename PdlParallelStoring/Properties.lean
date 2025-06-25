@@ -5,8 +5,9 @@ import PdlParallelStoring.Semantics
 ----------------------------------------------------------------------------------------------------
 -- Property I) Rs₁ ; Rr₁ = Id
 @[simp]
-lemma s₁_comp_r₁ (F : Frame) [Structured F] [P : Proper F] :
-    ∀ {s u}, Relation.Comp (F.R π.s₁) (F.R π.r₁) s u ↔ s = u := by
+lemma s₁_comp_r₁ (F : Frame) [P : Proper F] :
+    ∀ {s u}, Relation.Comp (F.R π.s₁) (F.R π.r₁) s u ↔
+             s = u := by
   intros s u
   constructor
   case mp =>
@@ -29,8 +30,9 @@ lemma s₁_comp_r₁ (F : Frame) [Structured F] [P : Proper F] :
 
 -- Property II) Rs₂ ; Rr₂ = Id
 @[simp]
-lemma s₂_comp_r₂ (F : Frame) [Structured F] [P : Proper F] :
-    ∀ {s u}, Relation.Comp (F.R π.s₂) (F.R π.r₂) s u ↔ s = u := by
+lemma s₂_comp_r₂ (F : Frame) [P : Proper F] :
+    ∀ {s u}, Relation.Comp (F.R π.s₂) (F.R π.r₂) s u ↔
+             s = u := by
   intros s u
   constructor
   case mp =>
@@ -52,8 +54,9 @@ lemma s₂_comp_r₂ (F : Frame) [Structured F] [P : Proper F] :
 
 -- Property III) Rs₁ ; Rr₂ = E
 @[simp]
-lemma s₁_comp_r₂ (F : Frame) [SF: Structured F] [P : Proper F] :
-    ∀ {s t}, Relation.Comp (F.R π.s₁) (F.R π.r₂) s t ↔ SF.S.E s t := by
+lemma s₁_comp_r₂ (F : Frame) [P : Proper F] :
+    ∀ {s t}, Relation.Comp (F.R π.s₁) (F.R π.r₂) s t ↔
+             s ≈ t := by
   intros s t
   constructor
   case mp =>
@@ -65,16 +68,16 @@ lemma s₁_comp_r₂ (F : Frame) [SF: Structured F] [P : Proper F] :
     have h_eq : s₁ ⋆ t₁ = s₂ ⋆ t₂ := by rw [← hu_eq, hu_eq₂]
     have ⟨_, t₁_eq_t₂⟩ := State.inject.mp h_eq
     rw [hs_eq, ht_eq, ← t₁_eq_t₂]
-    have h₁ : SF.S.E s₁ (s₁ ⋆ t₁) := by
-      apply SF.respects_equiv
+    have h₁ : s₁ ≈ (s₁ ⋆ t₁) := by
+      apply Structured.respects_equiv
       rw [P.s₁]
       use s₁, t₁
-    have h₂ : SF.S.E t₁ (s₁ ⋆ t₁) := by
-      apply SF.respects_equiv
+    have h₂ : t₁ ≈ (s₁ ⋆ t₁) := by
+      apply Structured.respects_equiv
       rw [P.s₂]
       use s₁, t₁
-    have h₃ : SF.S.E (s₁ ⋆ t₁) t₁ := SF.S.equiv.symm h₂
-    exact SF.S.equiv.trans h₁ h₃
+    have h₃ : (s₁ ⋆ t₁) ≈ t₁ := State.equiv.symm h₂
+    exact State.equiv.trans h₁ h₃
   case mpr =>
     intro _
     use s ⋆ t
@@ -85,7 +88,7 @@ lemma s₁_comp_r₂ (F : Frame) [SF: Structured F] [P : Proper F] :
 
 -- Property IV) (Rr₁ ; Rs₁) ∩ (Rr₂ ; Rs₂) ⊆ Id
 @[simp]
-lemma r₁_s₁_inter_r₂_s₂ (F : Frame) [Structured F] [P : Proper F] :
+lemma r₁_s₁_inter_r₂_s₂ (F : Frame) [P : Proper F] :
     ∀ {s t}, (Relation.Comp (F.R π.r₁) (F.R π.s₁) s t ∧
               Relation.Comp (F.R π.r₂) (F.R π.s₂) s t) →
               s = t := by
@@ -115,8 +118,9 @@ lemma r₁_s₁_inter_r₂_s₂ (F : Frame) [Structured F] [P : Proper F] :
 
 -- Property V) Rr₁ ; E = Rr₂ ; E
 @[simp]
-lemma r₁_E_eq_r₂_E (F : Frame) [SF : Structured F] [P : Proper F] :
-    ∀ {s t}, Relation.Comp (F.R π.r₁) SF.S.E s t ↔ Relation.Comp (F.R π.r₂) SF.S.E s t := by
+lemma r₁_E_eq_r₂_E (F : Frame) [P : Proper F] :
+    ∀ {s t}, Relation.Comp (F.R π.r₁) State.E s t ↔
+             Relation.Comp (F.R π.r₂) State.E s t := by
   intros s t
   constructor
   case mp =>

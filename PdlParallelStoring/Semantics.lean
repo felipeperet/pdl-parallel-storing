@@ -33,7 +33,7 @@ def satisfies (M : Model) (w : M.F.W) : Φ → Prop
 notation:40 "(" κ "," s ") " " ⊨ " φ => satisfies κ s φ
 
 -- Def) A model is standard when it satisfies the following conditions:
-class Standard (M : Model) : Prop where
+class Standard (M : Model) where
   comp : ∀ {α β}, M.F.R (α ; β) = Relation.Comp (M.F.R α) (M.F.R β)
   choice : ∀ {α β}, M.F.R (α ∪ β) = λ w₁ w₂ => M.F.R α w₁ w₂ ∨ M.F.R β w₁ w₂
   iter : ∀ {α}, M.F.R (α ★) = Relation.ReflTransGen (M.F.R α)
@@ -54,6 +54,7 @@ class State (S : Type) where
   star : S → S → S
   [inject : ∀ {s₁ t₁ s₂ t₂}, (star s₁ t₁ = star s₂ t₂) ↔ (s₁ = s₂) ∧ t₁ = t₂]
 
+infix:50 " ≈ " => State.E
 infixr:85 "⋆" => State.star
 
 -- Def) A structured frame is a pair F = ((S, E ⋆), {Rπ : π is a program})
@@ -63,12 +64,12 @@ infixr:85 "⋆" => State.star
 --        - (S, {Rπ : π is a program}) is a frame.
 class Structured (F : Frame) where
   [S : State F.W]
-  respects_equiv : ∀ {π s₁ s₂}, F.R π s₁ s₂ → S.E s₁ s₂
+  respects_equiv : ∀ {π s₁ s₂}, F.R π s₁ s₂ → s₁ ≈ s₂
 
 instance {F : Frame} [SF : Structured F] : State F.W := SF.S
 
 -- Def) A structured frame F is proper when it satisfies the following conditions:
-class Proper (F : Frame) [Structured F] : Prop where
+class Proper (F : Frame) extends Structured F where
   s₁ : ∀ {s' t'}, F.R π.s₁ s' t' ↔ ∃ s t, (s' = s) ∧ t' = s ⋆ t
   s₂ : ∀ {s' t'}, F.R π.s₂ s' t' ↔ ∃ s t, (s' = t) ∧ t' = s ⋆ t
   r₁ : ∀ {s' t'}, F.R π.r₁ s' t' ↔ ∃ s t, (s' = s ⋆ t) ∧ t' = s
@@ -78,23 +79,25 @@ class Proper (F : Frame) [Structured F] : Prop where
     F.R π₁ s₁ s₂ ∧ F.R π₂ t₁ t₂
 
 -- Def) An PRSPDL model is a proper standard model.
-class ProperStandard (M : Model) [Standard M] [Structured M.F] [Proper M.F] : Prop
+class ProperStandard (M : Model) extends Standard M, Structured M.F, Proper M.F
 
 -- Def) Global satisfaction.
---      That is, a formula is satisfied in every possible state of a model.
-def globallySatisfies (M : Model) (φ : Φ) := ∀ {w : M.F.W}, (M, w) ⊨ φ
+--      That is, the formula is satisfied in every possible state of a proper standard model.
+def globallySatisfies (M : Model) [ProperStandard M] (φ : Φ) :=
+  ∀ {w : M.F.W}, (M, w) ⊨ φ
 
 notation:40 M " ⊨ " φ => globallySatisfies M φ
 
--- Def) Validity in a frame.
---      That is, a formula is satisfied in every possible model of a frame.
-def validInFrame (F : Frame) (φ : Φ) : Prop := ∀ {M : Model}, (M.F = F) → M ⊨ φ
+-- Def) Validity in a proper frame.
+--      That is, a formula is satisfied in every possible model of a proper frame.
+def validInProperFrame (F : Frame) [Proper F] (φ : Φ) : Prop :=
+  ∀ {M : Model} [ProperStandard M], (M.F = F) → M ⊨ φ
 
-notation:40 F " ⊨ " φ => validInFrame F φ
+notation:40 F " ⊨ " φ => validInProperFrame F φ
 
 -- Def) Global validity.
---      That is, a formula is valid in every possible frame.
-def valid (φ : Φ) : Prop := ∀ {F : Frame}, F ⊨ φ
+--      That is, a formula is valid in every possible proper frame.
+def valid (φ : Φ) : Prop := ∀ {F : Frame} [Proper F], F ⊨ φ
 
 notation:40 "⊨ " φ => valid φ
 
