@@ -10,8 +10,7 @@ lemma s₁_comp_r₁ (F : Frame) [P : Proper F] :
              s = u := by
   intros s u
   constructor
-  case mp =>
-    intro hcomp
+  . intro hcomp
     obtain ⟨t, hs₁, hr₁⟩ := hcomp
     rw [P.s₁] at hs₁
     rw [P.r₁] at hr₁
@@ -21,8 +20,7 @@ lemma s₁_comp_r₁ (F : Frame) [P : Proper F] :
     have s₁_eq_s₂ : s₁ = s₂ := (State.inject.mp h_eq).1
     rw [hs_eq, hu_eq]
     exact s₁_eq_s₂
-  case mpr =>
-    intro h_eq
+  . intro h_eq
     use s ⋆ s
     simp [P.s₁, P.r₁]
     use u
@@ -35,8 +33,7 @@ lemma s₂_comp_r₂ (F : Frame) [P : Proper F] :
              s = u := by
   intros s u
   constructor
-  case mp =>
-    intro hcomp
+  . intro hcomp
     obtain ⟨t, hs₂, hr₂⟩ := hcomp
     rw [P.s₂] at hs₂
     rw [P.r₂] at hr₂
@@ -46,8 +43,7 @@ lemma s₂_comp_r₂ (F : Frame) [P : Proper F] :
     have t₁_eq_t₂ : t₁ = t₂ := (State.inject.mp h_eq).2
     rw [hs_eq, hu_eq]
     exact t₁_eq_t₂
-  case mpr =>
-    intro h_eq
+  . intro h_eq
     use s ⋆ s
     simp [P.s₂, P.r₂]
     constructor <;> use u <;> rw [h_eq]
@@ -59,8 +55,7 @@ lemma s₁_comp_r₂ (F : Frame) [P : Proper F] :
              s ≈ t := by
   intros s t
   constructor
-  case mp =>
-    intro hcomp
+  . intro hcomp
     obtain ⟨_, hs₁, hr₂⟩ := hcomp
     rw [P.s₁, P.r₂] at *
     obtain ⟨s₁, t₁, hs_eq, hu_eq⟩ := hs₁
@@ -78,13 +73,12 @@ lemma s₁_comp_r₂ (F : Frame) [P : Proper F] :
       use s₁, t₁
     have h₃ : (s₁ ⋆ t₁) ≈ t₁ := State.equiv.symm h₂
     exact State.equiv.trans h₁ h₃
-  case mpr =>
-    intro _
+  . intro _
     use s ⋆ t
     rw [P.s₁, P.r₂] at *
     constructor
-    case left => use s, t
-    case right => use s, t
+    . use s, t
+    . use s, t
 
 -- Property IV) (Rr₁ ; Rs₁) ∩ (Rr₂ ; Rs₂) ⊆ Id
 @[simp]
@@ -123,43 +117,33 @@ lemma r₁_E_eq_r₂_E (F : Frame) [P : Proper F] :
              Relation.Comp (F.R π.r₂) State.E s t := by
   intros s t
   constructor
-  case mp =>
-    intros comp
+  . intros comp
     obtain ⟨i, hr₁, equiv⟩ := comp
     rw [P.r₁] at hr₁
     obtain ⟨s₁, t₁, s_eq, i_eq⟩ := hr₁
     use t₁
     constructor
-    case left =>
-      rw [P.r₂, s_eq]
+    . rw [P.r₂, s_eq]
       use s₁, t₁
-    case right =>
-      rw [← s₁_comp_r₂]
+    . rw [← s₁_comp_r₂]
       use t₁ ⋆ t
       constructor
-      case left =>
-        rw [P.s₁]
+      . rw [P.s₁]
         use t₁, t
-      case right =>
-        rw [P.r₂]
+      . rw [P.r₂]
         use t₁, t
-  case mpr =>
-    intros comp
+  . intros comp
     obtain ⟨i, hr₂, equiv⟩ := comp
     rw [P.r₂] at hr₂
     obtain ⟨s₁, t₁, s_eq, i_eq⟩ := hr₂
     use s₁
     constructor
-    case left =>
-      rw [s_eq, P.r₁]
+    . rw [s_eq, P.r₁]
       use s₁, t₁
-    case right =>
-      rw [← s₁_comp_r₂]
+    . rw [← s₁_comp_r₂]
       use s₁ ⋆ t
       constructor
-      case left =>
-        rw [P.s₁]
+      . rw [P.s₁]
         use s₁, t
-      case right =>
-        rw [P.r₂]
+      . rw [P.r₂]
         use s₁, t

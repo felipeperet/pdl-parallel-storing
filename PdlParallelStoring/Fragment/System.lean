@@ -1,6 +1,7 @@
 import Mathlib.Logic.Basic
 
 import PdlParallelStoring.Semantics
+import PdlParallelStoring.Properties
 
 open Classical
 
@@ -76,7 +77,7 @@ theorem soundness : ∀ {φ : Φ}, (⊢ φ) → (⊨ φ) := by
         eval_iff_satisfies M w φ hProp
       rw [← hLemma]
       exact hTrue
-  | functional φ₁ =>
+  | functional =>
       intros _ P M _ hEq w hSat
       simp [satisfies] at hSat
       obtain ⟨h₁, h₂⟩ := hSat
@@ -92,4 +93,18 @@ theorem soundness : ∀ {φ : Φ}, (⊢ φ) → (⊨ φ) := by
       have s'Eq : s' = s := by rw [hEq₂', ← hs₁Eq, ← hEq₂]
       rw [s'Eq] at hNotSat
       exact hNotSat hSat
+  | temporal φ =>
+      intros _ P M _ hEq w hSat
+      simp [satisfies] at hSat
+      obtain ⟨hSat₁, hSat₂⟩ := hSat
+      obtain ⟨s, hAnd⟩ := hSat₂
+      obtain ⟨hRws, hAll⟩ := hAnd
+      have hR₁ : M.F.R π.r₁ s w :=  by
+        subst hEq
+        rw [P.s₁] at hRws
+        obtain ⟨w', t, hw_eq, hs_eq⟩ := hRws
+        rw [P.r₁]
+        use w', t
+      have hNotSat : ¬ (M,w) ⊨ φ := hAll w hR₁
+      exact hNotSat hSat₁
   | _ => sorry
