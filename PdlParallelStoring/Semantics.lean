@@ -55,7 +55,7 @@ class State (S : Type) where
   [inject : ∀ {s₁ t₁ s₂ t₂}, (star s₁ t₁ = star s₂ t₂) ↔ (s₁ = s₂) ∧ t₁ = t₂]
 
 infix:50 " ≈ " => State.E
-infixr:85 "⋆" => State.star
+infixr:85 " ⋆ " => State.star
 
 -- Def) A structured frame is a pair F = ((S, E ⋆), {Rπ : π is a program})
 --      where:
@@ -97,11 +97,13 @@ notation:40 F " ⊨ " φ => validInProperFrame F φ
 
 -- Def) Global validity.
 --      That is, a formula is valid in every possible proper frame.
-def valid (φ : Φ) : Prop := ∀ {F : Frame} [Proper F], F ⊨ φ
+def valid (φ : Φ) : Prop :=
+  ∀ {F : Frame} [Proper F], F ⊨ φ
 
 notation:40 "⊨ " φ => valid φ
 
 -- Def) Semantic equivalence.
-def semEquiv (φ₁ φ₂ : Φ) : Prop := ⊨ (φ₁ ↔ φ₂)
+def semEquiv (φ₁ φ₂ : Φ) : Prop :=
+  ⊨ (φ₁ ↔ φ₂)
 
 infixl:50 " ≡ " => semEquiv

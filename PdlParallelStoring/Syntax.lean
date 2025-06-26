@@ -31,7 +31,7 @@ open Φ π
 notation "⊥" => false
 prefix:max "¬ " => neg
 infixr:70 " ∧ " => conj
-notation:50 "⟨" α "⟩" φ => diamond α φ
+notation:50 "⟨" α "⟩ " φ => diamond α φ
 
 infixl:80 ";" => comp
 infixr:70 " ∪ " => choice
@@ -39,15 +39,13 @@ postfix:max " ★" => iter
 infixr:60 " ‖ " => parallel
 postfix:max " ?" => test
 
-@[simp]
-def isPropositional : Φ → Prop
+def Φ.isPropositional : Φ → Prop
   | Φ.false => True
   | Φ.atomic _ => True
   | Φ.neg φ => isPropositional φ
   | Φ.conj φ₁ φ₂ => isPropositional φ₁ ∧ isPropositional φ₂
   | Φ.diamond _ _ => False
 
-@[simp]
 def eval (assign : Ψ → Bool) : (φ : Φ) → isPropositional φ → Bool
   | Φ.false, _ => false
   | Φ.atomic ψ, _ => assign ψ
@@ -58,8 +56,7 @@ def eval (assign : Ψ → Bool) : (φ : Φ) → isPropositional φ → Bool
       (eval assign φ₁ h₁) && (eval assign φ₂ h₂)
   | Φ.diamond _ _, h => False.elim h
 
-@[simp]
-def isTautology (φ : Φ) : Prop :=
+def Φ.isTautology (φ : Φ) : Prop :=
   ∃ (h : isPropositional φ), ∀ assign, eval assign φ h = Bool.true
 
 ----------------------------------------------------------------------------------------------------
@@ -83,7 +80,7 @@ infixr:55 " ↔ " => bicond
 
 -- Def) [α] φ ≡ ¬ ⟨α⟩ ¬φ
 abbrev box (α : π) (φ : Φ) : Φ := ¬ (⟨α⟩ (¬ φ))
-notation:50 "[" α "]" φ => box α φ
+notation:50 "[" α "] " φ => box α φ
 
 ----------------------------------------------------------------------------------------------------
 -- Derived Control Structures
