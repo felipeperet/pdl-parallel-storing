@@ -25,7 +25,7 @@ inductive RSPDL₀ : Φ → Prop where
   | storeRestoreDiamond φ : RSPDL₀ (φ → ([π.s₁ ; π.r₂] ⟨π.s₁ ; π.r₂⟩ φ))
   | storeRestoreIterate φ : RSPDL₀ (([π.s₁ ; π.r₂] φ) → ([π.s₁ ; π.r₂] [π.s₁ ; π.r₂] φ))
   -- Inference Rules
-  | modusPonens ψ φ : RSPDL₀ φ → RSPDL₀ (φ → ψ) → RSPDL₀ ψ
+  | modusPonens φ₁ φ₂ : RSPDL₀ φ₁ → RSPDL₀ (φ₁ → φ₂) → RSPDL₀ φ2
   | necessitation α φ : RSPDL₀ φ → RSPDL₀ ([α] φ)
 
 notation:40 "⊢ " φ => RSPDL₀ φ
@@ -130,6 +130,17 @@ theorem soundness : ∀ {φ : Φ}, (⊢ φ) → (⊨ φ) := by
         | inr hBeta =>
             have hPhiHolds : (M, s) ⊨ φ := hAll₂ s hBeta
             exact hPhiNotHolds hPhiHolds
+  | K α φ₁ φ₂ =>
+      intros _ P M _ hEq w hAnd
+      subst hEq
+      obtain ⟨hSat₁, hSat₂⟩ := hAnd
+      simp [satisfies] at *
+      obtain ⟨hAlphaBox, hCounterExample⟩ := hSat₂
+      obtain ⟨s, hRws, hPhi₂NotHolds⟩ := hCounterExample
+      have hPhi₁Holds : (M, s) ⊨ φ₁ := hAlphaBox s hRws
+      have hImp : ((M, s) ⊨ φ₁) → ((M, s) ⊨ φ₂) := hSat₁ s hRws
+      have hPhi₂Holds : (M, s) ⊨ φ₂ := hImp hPhi₁Holds
+      exact hPhi₂NotHolds hPhi₂Holds
   | functional =>
       intros _ P M _ hEq w hSat
       subst hEq
@@ -240,4 +251,5 @@ theorem soundness : ∀ {φ : Φ}, (⊢ φ) → (⊨ φ) := by
         simp [State.equiv.trans hRws hRst]
       have hPhiHolds : (M, t) ⊨ φ := hAll t hReach
       exact hPhiNotHolds hPhiHolds
-  | _ => sorry
+  | modusPonens ψ φ => sorry
+  | necessitation α φ => sorry
