@@ -1,6 +1,5 @@
 import Mathlib.Logic.Basic
 
-import PdlParallelStoring.Semantics
 import PdlParallelStoring.Properties
 
 open Classical
@@ -17,7 +16,7 @@ inductive RSPDL₀ : Φ → Prop where
   | tautology φ : φ.isTautology → RSPDL₀ φ
   | composition α β φ : RSPDL₀ (([α ; β] φ) ↔ ([α] [β] φ))
   | choice α β φ : RSPDL₀ (([α ∪ β] φ) ↔ (([α] φ) ∧ ([β] φ)))
-  | K α ψ φ : RSPDL₀ (([α] (φ → ψ)) → (([α] φ) → ([α] ψ)))
+  | K α φ₁ φ₂ : RSPDL₀ (([α] (φ₁ → φ₂)) → (([α] φ₁) → ([α] φ₂)))
   | functional φ : RSPDL₀ ((⟨π.r₁⟩ φ) → ([π.r₁] φ))
   | temporal φ : RSPDL₀ (φ → ([π.s₁] ⟨π.r₁⟩ φ))
   | sameDomain : RSPDL₀ ((⟨π.r₁⟩ ⊤) ↔ (⟨π.r₂⟩ ⊤))
@@ -77,6 +76,60 @@ theorem soundness : ∀ {φ : Φ}, (⊢ φ) → (⊨ φ) := by
         eval_iff_satisfies M w φ hProp
       rw [← hLemma]
       exact hTrue
+  | composition α β φ =>
+      intros _ _ M _ _ w
+      constructor
+      . intros hAnd
+        obtain ⟨hAll, hEx⟩ := hAnd
+        simp [satisfies] at *
+        obtain ⟨s, hRws, t, hRst, hPhiNotHolds⟩ := hEx
+        have hReach : M.F.R (α ; β) w t := by
+          rw [Standard.comp]
+          use s
+        have hPhiHolds : (M, t) ⊨ φ := hAll t hReach
+        exact hPhiNotHolds hPhiHolds
+      . intros hSat
+        obtain ⟨hAll, hEx⟩ := hSat
+        simp [satisfies] at *
+        obtain ⟨s, hRws, hPhiNotHolds⟩ := hEx
+        have hComp : Relation.Comp (M.F.R α) (M.F.R β) w s := by
+          rw [← Standard.comp]
+          exact hRws
+        obtain ⟨t, hRwt, hRts⟩ := hComp
+        have hPhiHolds : (M, s) ⊨ φ := hAll t hRwt s hRts
+        exact hPhiNotHolds hPhiHolds
+  | choice α β φ =>
+      intros _ _ M _ _ w
+      constructor
+      . intros hAnd
+        obtain ⟨hSat₁, hSat₂⟩ := hAnd
+        simp [satisfies] at *
+        have hAlphaBox : ∀ (x : M.F.W), M.F.R α w x → (M, x) ⊨ φ := by
+          intros t hRwt
+          apply hSat₁
+          rw [Standard.choice]
+          left
+          exact hRwt
+        obtain ⟨s, hRws, hPhiNotHolds⟩ := hSat₂ hAlphaBox
+        have hPhiHolds : (M, s) ⊨ φ := by
+          apply hSat₁
+          rw [Standard.choice]
+          right
+          exact hRws
+        exact hPhiNotHolds hPhiHolds
+      . intros hAnd
+        obtain ⟨hAll, hEx⟩ := hAnd
+        simp [satisfies] at *
+        obtain ⟨s, hRws, hPhiNotHolds⟩ := hEx
+        obtain ⟨hAll₁, hAll₂⟩ := hAll
+        rw [Standard.choice] at hRws
+        cases hRws with
+        | inl hAlpha =>
+            have hPhiHolds : (M, s) ⊨ φ := hAll₁ s hAlpha
+            exact hPhiNotHolds hPhiHolds
+        | inr hBeta =>
+            have hPhiHolds : (M, s) ⊨ φ := hAll₂ s hBeta
+            exact hPhiNotHolds hPhiHolds
   | functional =>
       intros _ P M _ hEq w hSat
       subst hEq
@@ -178,8 +231,7 @@ theorem soundness : ∀ {φ : Φ}, (⊢ φ) → (⊨ φ) := by
       have hPhiNotHolds : ¬(M, w) ⊨ φ := hAll w hReach
       exact hPhiNotHolds hPhiHolds
   | storeRestoreIterate φ =>
-      intros _ P M _ hEq w hAnd
-      subst hEq
+      intros _ _ M _ _ w hAnd
       obtain ⟨hAll, hSat⟩ := hAnd
       simp [satisfies] at *
       obtain ⟨s, hRws, t, hRst, hPhiNotHolds⟩ := hSat
