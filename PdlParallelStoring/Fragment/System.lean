@@ -25,7 +25,7 @@ inductive RSPDL₀ : Φ → Prop where
   | storeRestoreDiamond φ : RSPDL₀ (φ → ([π.s₁ ; π.r₂] ⟨π.s₁ ; π.r₂⟩ φ))
   | storeRestoreIterate φ : RSPDL₀ (([π.s₁ ; π.r₂] φ) → ([π.s₁ ; π.r₂] [π.s₁ ; π.r₂] φ))
   -- Inference Rules
-  | modusPonens φ₁ φ₂ : RSPDL₀ φ₁ → RSPDL₀ (φ₁ → φ₂) → RSPDL₀ φ2
+  | modusPonens φ₁ φ₂ : RSPDL₀ φ₁ → RSPDL₀ (φ₁ → φ₂) → RSPDL₀ φ₂
   | necessitation α φ : RSPDL₀ φ → RSPDL₀ ([α] φ)
 
 notation:40 "⊢ " φ => RSPDL₀ φ
@@ -65,12 +65,12 @@ lemma eval_iff_satisfies (M : Model) (w : M.F.W) :
       exact h
 
 theorem soundness : ∀ {φ : Φ}, (⊢ φ) → (⊨ φ) := by
-  intros φ h
-  cases h with
-  | tautology _ t =>
+  intros _ h
+  induction h with
+  | tautology φ t =>
       obtain ⟨hProp, hEval⟩ := t
-      intros _ _ M _ _ w
-      let assign := λ ψ => decide (M.V ψ w)
+      intros F _ M _ hEq w
+      let assign := fun χ => decide (M.V χ w)
       have hTrue : eval assign φ hProp = Bool.true := hEval assign
       have hLemma : (eval assign φ hProp = Bool.true) ↔ ((M, w) ⊨ φ) :=
         eval_iff_satisfies M w φ hProp
@@ -131,8 +131,7 @@ theorem soundness : ∀ {φ : Φ}, (⊢ φ) → (⊨ φ) := by
             have hPhiHolds : (M, s) ⊨ φ := hAll₂ s hBeta
             exact hPhiNotHolds hPhiHolds
   | K α φ₁ φ₂ =>
-      intros _ P M _ hEq w hAnd
-      subst hEq
+      intros _ _ M _ _ w hAnd
       obtain ⟨hSat₁, hSat₂⟩ := hAnd
       simp [satisfies] at *
       obtain ⟨hAlphaBox, hCounterExample⟩ := hSat₂
@@ -247,9 +246,24 @@ theorem soundness : ∀ {φ : Φ}, (⊢ φ) → (⊨ φ) := by
       simp [satisfies] at *
       obtain ⟨s, hRws, t, hRst, hPhiNotHolds⟩ := hSat
       have hReach : M.F.R (π.s₁ ; π.r₂) w t := by
-        simp [Standard.comp, s₁_comp_r₂] at *
+        rw [Standard.comp, s₁_comp_r₂] at *
         simp [State.equiv.trans hRws hRst]
       have hPhiHolds : (M, t) ⊨ φ := hAll t hReach
       exact hPhiNotHolds hPhiHolds
-  | modusPonens ψ φ => sorry
-  | necessitation α φ => sorry
+  | modusPonens φ₁ φ₂ h₁ hInf ih₁ ih₂  =>
+      intros _ _ M _ hEq w
+      have hSat : (M, w) ⊨ φ₁ := ih₁ hEq
+      have hSatInf : (M, w) ⊨ (φ₁ → φ₂) := ih₂ hEq
+      apply by_contra
+      intro h
+      have : (¬¬(M,w) ⊨ φ₁) ∧ ¬(M,w) ⊨ φ₂ := by
+        constructor
+        · intro h_neg
+          exact h_neg hSat
+        · exact h
+      exact hSatInf this
+  | necessitation α φ _ ih₂ =>
+      intros _ _ M _ hEq w hSat
+      obtain ⟨s, _, hPhiNotHolds⟩ := hSat
+      have hPhiHolds : (M, s) ⊨ φ := ih₂ hEq
+      exact hPhiNotHolds hPhiHolds
