@@ -40,6 +40,7 @@ lemma eval_iff_satisfies (M : Model) (w : M.F.W) :
       exfalso
       exact h
 
+-- Theorem) If φ is derivable in RSPDL₀, then φ is valid in all frames.
 theorem soundness : ∀ {φ : Φ}, (⊢ φ) → (⊨ φ) := by
   intros _ h
   induction h with
@@ -116,7 +117,7 @@ theorem soundness : ∀ {φ : Φ}, (⊢ φ) → (⊨ φ) := by
       have hImp : ((M, s) ⊨ φ₁) → ((M, s) ⊨ φ₂) := hSat₁ s hRws
       have hPhi₂Holds : (M, s) ⊨ φ₂ := hImp hPhi₁Holds
       exact hPhi₂NotHolds hPhi₂Holds
-  | functional =>
+  | functionalR₁ =>
       intros _ P M _ hEq w hSat
       subst hEq
       simp [satisfies] at hSat
@@ -132,7 +133,7 @@ theorem soundness : ∀ {φ : Φ}, (⊢ φ) → (⊨ φ) := by
       have s'Eq : s' = s := by rw [hEq₂', ← hs₁Eq, ← hEq₂]
       rw [s'Eq] at hNotSat
       exact hNotSat hSat
-  | temporal φ =>
+  | temporalForward φ =>
       intros _ P M _ hEq w hSat
       subst hEq
       simp [satisfies] at hSat
@@ -243,3 +244,4 @@ theorem soundness : ∀ {φ : Φ}, (⊢ φ) → (⊨ φ) := by
       obtain ⟨s, _, hPhiNotHolds⟩ := hSat
       have hPhiHolds : (M, s) ⊨ φ := ih₂ hEq
       exact hPhiNotHolds hPhiHolds
+  | _ => sorry

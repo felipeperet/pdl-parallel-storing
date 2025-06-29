@@ -1,6 +1,6 @@
 import Mathlib.Logic.Basic
 
-import PdlParallelStoring.Properties
+import PdlParallelStoring.Syntax
 
 open Classical
 
@@ -17,8 +17,16 @@ inductive RSPDL₀ : Φ → Prop where
   | composition α β φ : RSPDL₀ (([α ; β] φ) ↔ ([α] [β] φ))
   | choice α β φ : RSPDL₀ (([α ∪ β] φ) ↔ (([α] φ) ∧ ([β] φ)))
   | K α φ₁ φ₂ : RSPDL₀ (([α] (φ₁ → φ₂)) → (([α] φ₁) → ([α] φ₂)))
-  | functional φ : RSPDL₀ ((⟨π.r₁⟩ φ) → ([π.r₁] φ))
-  | temporal φ : RSPDL₀ (φ → ([π.s₁] ⟨π.r₁⟩ φ))
+  | functionalR₁ φ : RSPDL₀ ((⟨π.r₁⟩ φ) → ([π.r₁] φ))
+  | functionalR₂ φ : RSPDL₀ ((⟨π.r₂⟩ φ) → ([π.r₂] φ))
+  | temporalForward φ : RSPDL₀ (φ → ([π.s₁] ⟨π.r₁⟩ φ))
+  | temporalBackward φ : RSPDL₀ (⟨π.s₁⟩ ⟨π.r₁⟩ φ → φ)
+  | s₁r₁Converse φ : RSPDL₀ ((⟨π.s₁⟩ φ) → (⟨π.r₁⟩ φ))
+  | r₁s₁Converse φ : RSPDL₀ ((⟨π.r₁⟩ φ) → (⟨π.s₁⟩ φ))
+  | temporalForward₂ φ : RSPDL₀ (φ → ([π.s₂] ⟨π.r₂⟩ φ))
+  | temporalBackward₂ φ : RSPDL₀ (⟨π.s₂⟩ ⟨π.r₂⟩ φ → φ)
+  | s₂r₂Converse φ : RSPDL₀ ((⟨π.s₂⟩ φ) → (⟨π.r₂⟩ φ))
+  | r₂s₂Converse φ : RSPDL₀ (⟨π.r₂⟩ φ → (⟨π.s₂⟩ φ))
   | sameDomain : RSPDL₀ ((⟨π.r₁⟩ ⊤) ↔ (⟨π.r₂⟩ ⊤))
   | unicity φ : RSPDL₀ ((⟨π.s₁ ; π.r₁⟩ φ) ↔ ([π.s₁ ; π.r₁] φ))
   | storeRestoreId φ : RSPDL₀ (([π.s₁ ; π.r₂] φ) → φ)
