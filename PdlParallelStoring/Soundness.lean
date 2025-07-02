@@ -7,7 +7,7 @@ open Classical
 
 -- Def) For propositional formulas, boolean evaluation corresponds exactly to semantic satisfaction.
 lemma eval_iff_satisfies (M : Model) (w : M.F.W) :
-  ∀ (φ : Φ) (h : φ.isPropositional),
+  ∀ (φ : Φ) (h : IsPropositional φ),
     (eval (λ ψ => decide (M.V ψ w)) φ h = Bool.true) ↔ ((M, w) ⊨ φ)
   | Φ.false, h => by simp [eval, satisfies]
   | Φ.atomic ψ, h => by simp [eval, satisfies]

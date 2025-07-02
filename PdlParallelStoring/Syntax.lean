@@ -28,7 +28,7 @@ mutual
 end
 open Φ π
 
-notation "⊥" => false
+notation "⊥'" => false
 prefix:max "¬ " => neg
 infixr:70 " ∧ " => conj
 notation:50 "⟨" α "⟩ " φ => diamond α φ
@@ -39,32 +39,32 @@ postfix:max " ★" => iter
 infixr:60 " ‖ " => parallel
 postfix:max " ?" => test
 
-def Φ.isPropositional : Φ → Prop
+def IsPropositional : Φ → Prop
   | Φ.false => True
   | Φ.atomic _ => True
-  | Φ.neg φ => isPropositional φ
-  | Φ.conj φ₁ φ₂ => isPropositional φ₁ ∧ isPropositional φ₂
+  | Φ.neg φ => IsPropositional φ
+  | Φ.conj φ₁ φ₂ => IsPropositional φ₁ ∧ IsPropositional φ₂
   | Φ.diamond _ _ => False
 
-def eval (assign : Ψ → Bool) : (φ : Φ) → isPropositional φ → Bool
+def eval (assign : Ψ → Bool) : (φ : Φ) → IsPropositional φ → Bool
   | Φ.false, _ => false
   | Φ.atomic ψ, _ => assign ψ
   | Φ.neg φ, h => !(eval assign φ h)
   | Φ.conj φ₁ φ₂, h =>
-      let h₁ : isPropositional φ₁ := h.1
-      let h₂ : isPropositional φ₂ := h.2
+      let h₁ : IsPropositional φ₁ := h.1
+      let h₂ : IsPropositional φ₂ := h.2
       (eval assign φ₁ h₁) && (eval assign φ₂ h₂)
   | Φ.diamond _ _, h => False.elim h
 
 def Φ.isTautology (φ : Φ) : Prop :=
-  ∃ (h : isPropositional φ), ∀ assign, eval assign φ h = Bool.true
+  ∃ (h : IsPropositional φ), ∀ assign, eval assign φ h = Bool.true
 
 ----------------------------------------------------------------------------------------------------
 -- Derived Logical Operators
 ----------------------------------------------------------------------------------------------------
 -- Def) ⊤ ≡ ¬⊥
-abbrev true : Φ := ¬ ⊥
-notation "⊤" => true
+abbrev true : Φ := ¬ ⊥'
+notation "⊤'" => true
 
 -- Def) φ₁ ∨ φ₂ ≡ ¬ (¬φ₁ ∧ ¬φ₂)
 abbrev disj (φ₁ φ₂ : Φ) : Φ := ¬ ((¬ φ₁) ∧ (¬ φ₂))
@@ -88,12 +88,12 @@ notation:50 "[" α "] " φ => box α φ
 -- Def)   skip α
 --      ≡ ⊤?
 abbrev skip : π :=
-  ⊤ ?
+  ⊤' ?
 
 -- Def)   fail α
 --      ≡ ⊥?
 abbrev fail : π :=
-  ⊥ ?
+  ⊥' ?
 
 -- Def)   if φ₁ → φ₂ | ... | φₙ → αₙ fi
 --      ≡  φ₁? ; α₁ ∪ ... ∪ φₙ? ; αₙ
@@ -113,7 +113,7 @@ def pdlDo (branches : List (Φ × π)) : π :=
       (λ (pair : Φ × π) (acc : Φ) =>
         let (φ, _) := pair
         (¬ φ) ∧ acc)
-      ⊤
+      ⊤'
   loop ; (exit ?)
 
 -- Def)   if φ then α else β

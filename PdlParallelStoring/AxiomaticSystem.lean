@@ -27,7 +27,7 @@ inductive RSPDL₀ : Φ → Prop where
   | temporalBackward₂ φ : RSPDL₀ (⟨π.s₂⟩ ⟨π.r₂⟩ φ → φ)
   | s₂r₂Converse φ : RSPDL₀ ((⟨π.s₂⟩ φ) → (⟨π.r₂⟩ φ))
   | r₂s₂Converse φ : RSPDL₀ (⟨π.r₂⟩ φ → (⟨π.s₂⟩ φ))
-  | sameDomain : RSPDL₀ ((⟨π.r₁⟩ ⊤) ↔ (⟨π.r₂⟩ ⊤))
+  | sameDomain : RSPDL₀ ((⟨π.r₁⟩ ⊤') ↔ (⟨π.r₂⟩ ⊤'))
   | unicity φ : RSPDL₀ ((⟨π.s₁ ; π.r₁⟩ φ) ↔ ([π.s₁ ; π.r₁] φ))
   | storeRestoreId φ : RSPDL₀ (([π.s₁ ; π.r₂] φ) → φ)
   | storeRestoreDiamond φ : RSPDL₀ (φ → ([π.s₁ ; π.r₂] ⟨π.s₁ ; π.r₂⟩ φ))

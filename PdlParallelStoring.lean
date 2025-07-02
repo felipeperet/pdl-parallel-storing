@@ -6,3 +6,4 @@ import PdlParallelStoring.Semantics
 import PdlParallelStoring.Properties
 import PdlParallelStoring.AxiomaticSystem
 import PdlParallelStoring.Soundness
+import PdlParallelStoring.Completeness
