@@ -2,8 +2,6 @@ import Mathlib.Logic.Basic
 
 import PdlParallelStoring.Syntax
 
-open Classical
-
 ----------------------------------------------------------------------------------------------------
 -- Axiomatic System for RSPDL₀
 ----------------------------------------------------------------------------------------------------
@@ -13,7 +11,7 @@ open Classical
 -- Def) Provability in RSPDL₀: ⊢ φ means φ is derivable from the axioms and inference rules.
 inductive RSPDL₀ : Φ → Prop where
   -- Axioms
-  | tautology φ : φ.isTautology → RSPDL₀ φ
+  | tautology φ : IsTautology φ → RSPDL₀ φ
   | composition α β φ : RSPDL₀ (([α ; β] φ) ↔ ([α] [β] φ))
   | choice α β φ : RSPDL₀ (([α ∪ β] φ) ↔ (([α] φ) ∧ ([β] φ)))
   | K α φ₁ φ₂ : RSPDL₀ (([α] (φ₁ → φ₂)) → (([α] φ₁) → ([α] φ₂)))

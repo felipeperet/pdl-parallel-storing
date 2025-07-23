@@ -56,7 +56,7 @@ def eval (assign : Ψ → Bool) : (φ : Φ) → IsPropositional φ → Bool
       (eval assign φ₁ h₁) && (eval assign φ₂ h₂)
   | Φ.diamond _ _, h => False.elim h
 
-def Φ.isTautology (φ : Φ) : Prop :=
+def IsTautology (φ : Φ) : Prop :=
   ∃ (h : IsPropositional φ), ∀ assign, eval assign φ h = Bool.true
 
 ----------------------------------------------------------------------------------------------------
