@@ -29,7 +29,7 @@ def π₂ (α : π) (φ : Φ) : π :=
 def π₃ (α β γ : π) (φ : Φ) : π :=
   π.s₂ ;
   (α ‖ skip) ;
-  (((⟨π.r₂ ; φ ?⟩ ⊤) ? ; (β ‖ skip)) ∪ ((⟨π.r₂ ; (¬ φ) ?⟩ ⊤) ? ; (γ ‖ skip)))
+  (((⟨π.r₂ ; φ ?⟩ ⊤') ? ; (β ‖ skip)) ∪ ((⟨π.r₂ ; (¬ φ) ?⟩ ⊤') ? ; (γ ‖ skip)))
 
 /-  Example 4)
     When start to run on input u, stores the initial state u at second coordinate of an ordered

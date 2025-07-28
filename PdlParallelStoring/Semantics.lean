@@ -100,7 +100,7 @@ notation:40 F " ⊨ " φ => validInProperFrame F φ
 def valid (φ : Φ) : Prop :=
   ∀ {F : Frame} [Proper F], F ⊨ φ
 
-notation:40 "⊨ " φ => valid φ
+notation:40 " ⊨ " φ => valid φ
 
 -- Def) Semantic equivalence.
 def semEquiv (φ₁ φ₂ : Φ) : Prop :=

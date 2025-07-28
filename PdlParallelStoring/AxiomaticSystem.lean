@@ -10,11 +10,13 @@ import PdlParallelStoring.Syntax
 
 -- Def) Provability in RSPDL₀: ⊢ φ means φ is derivable from the axioms and inference rules.
 inductive RSPDL₀ : Φ → Prop where
-  -- Axioms
+  -- Logical Axioms
   | tautology φ : IsTautology φ → RSPDL₀ φ
+  -- Modal Axioms
   | composition α β φ : RSPDL₀ (([α ; β] φ) ↔ ([α] [β] φ))
   | choice α β φ : RSPDL₀ (([α ∪ β] φ) ↔ (([α] φ) ∧ ([β] φ)))
   | K α φ₁ φ₂ : RSPDL₀ (([α] (φ₁ → φ₂)) → (([α] φ₁) → ([α] φ₂)))
+  -- RSPDL₀ Specific Axioms
   | functionalR₁ φ : RSPDL₀ ((⟨π.r₁⟩ φ) → ([π.r₁] φ))
   | functionalR₂ φ : RSPDL₀ ((⟨π.r₂⟩ φ) → ([π.r₂] φ))
   | temporalForward φ : RSPDL₀ (φ → ([π.s₁] ⟨π.r₁⟩ φ))
@@ -33,5 +35,8 @@ inductive RSPDL₀ : Φ → Prop where
   -- Inference Rules
   | modusPonens φ₁ φ₂ : RSPDL₀ φ₁ → RSPDL₀ (φ₁ → φ₂) → RSPDL₀ φ₂
   | necessitation α φ : RSPDL₀ φ → RSPDL₀ ([α] φ)
+  | consistency φ : RSPDL₀ φ → RSPDL₀ ((¬ φ) → ⊥')
+  | explosion φ : RSPDL₀ ⊥' → RSPDL₀ φ
+  | classicalNegation φ : RSPDL₀ ((¬ φ) → ⊥') → RSPDL₀ φ
 
-notation:40 "⊢ " φ => RSPDL₀ φ
+notation:40 " ⊢ " φ => RSPDL₀ φ
