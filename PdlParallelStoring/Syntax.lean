@@ -59,6 +59,11 @@ def eval (assign : Ψ → Bool) : (φ : Φ) → IsPropositional φ → Bool
 def IsTautology (φ : Φ) : Prop :=
   ∃ (h : IsPropositional φ), ∀ assign, eval assign φ h = Bool.true
 
+-- Formulae enumeration.
+axiom encode : Φ → Nat
+axiom decode : Nat → Option Φ
+axiom countable : ∀ {φ}, decode (encode φ) = some φ
+
 ----------------------------------------------------------------------------------------------------
 -- Derived Logical Operators
 ----------------------------------------------------------------------------------------------------
