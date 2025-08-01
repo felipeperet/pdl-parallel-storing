@@ -1,42 +1,48 @@
-import Mathlib.Logic.Basic
+import Mathlib.Data.Set.Basic
 
 import PdlParallelStoring.Syntax
 
+-- TODO: Call this module DeductiveSystem (?)
+
 ----------------------------------------------------------------------------------------------------
--- Axiomatic System for RSPDL₀
+-- Axiomatic System for RSPDL₀ (Hilbert-style with context)
 ----------------------------------------------------------------------------------------------------
+
 -- This is a fragment called RSPDL₀. In this fragment, we do not allow the use of the operators of
 -- test (?), iteration (★) and parallel composition (‖).
 
--- Def) Provability in RSPDL₀: ⊢ φ means φ is derivable from the axioms and inference rules.
-inductive RSPDL₀ : Φ → Prop where
-  -- Logical Axioms
-  | tautology φ : IsTautology φ → RSPDL₀ φ
+inductive Axiom : Φ → Prop where
   -- Modal Axioms
-  | composition α β φ : RSPDL₀ (([α ; β] φ) ↔ ([α] [β] φ))
-  | choice α β φ : RSPDL₀ (([α ∪ β] φ) ↔ (([α] φ) ∧ ([β] φ)))
-  | K α φ₁ φ₂ : RSPDL₀ (([α] (φ₁ → φ₂)) → (([α] φ₁) → ([α] φ₂)))
+  | composition α β φ : Axiom (([α ; β] φ) ↔ ([α] [β] φ))
+  | choice α β φ : Axiom (([α ∪ β] φ) ↔ (([α] φ) ∧ ([β] φ)))
+  | K α φ₁ φ₂ : Axiom (([α] (φ₁ → φ₂)) → (([α] φ₁) → ([α] φ₂)))
   -- RSPDL₀ Specific Axioms
-  | functionalR₁ φ : RSPDL₀ ((⟨π.r₁⟩ φ) → ([π.r₁] φ))
-  | functionalR₂ φ : RSPDL₀ ((⟨π.r₂⟩ φ) → ([π.r₂] φ))
-  | temporalForward φ : RSPDL₀ (φ → ([π.s₁] ⟨π.r₁⟩ φ))
-  | temporalBackward φ : RSPDL₀ (⟨π.s₁⟩ ⟨π.r₁⟩ φ → φ)
-  | s₁r₁Converse φ : RSPDL₀ ((⟨π.s₁⟩ φ) → (⟨π.r₁⟩ φ))
-  | r₁s₁Converse φ : RSPDL₀ ((⟨π.r₁⟩ φ) → (⟨π.s₁⟩ φ))
-  | temporalForward₂ φ : RSPDL₀ (φ → ([π.s₂] ⟨π.r₂⟩ φ))
-  | temporalBackward₂ φ : RSPDL₀ (⟨π.s₂⟩ ⟨π.r₂⟩ φ → φ)
-  | s₂r₂Converse φ : RSPDL₀ ((⟨π.s₂⟩ φ) → (⟨π.r₂⟩ φ))
-  | r₂s₂Converse φ : RSPDL₀ (⟨π.r₂⟩ φ → (⟨π.s₂⟩ φ))
-  | sameDomain : RSPDL₀ ((⟨π.r₁⟩ ⊤') ↔ (⟨π.r₂⟩ ⊤'))
-  | unicity φ : RSPDL₀ ((⟨π.s₁ ; π.r₁⟩ φ) ↔ ([π.s₁ ; π.r₁] φ))
-  | storeRestoreId φ : RSPDL₀ (([π.s₁ ; π.r₂] φ) → φ)
-  | storeRestoreDiamond φ : RSPDL₀ (φ → ([π.s₁ ; π.r₂] ⟨π.s₁ ; π.r₂⟩ φ))
-  | storeRestoreIterate φ : RSPDL₀ (([π.s₁ ; π.r₂] φ) → ([π.s₁ ; π.r₂] [π.s₁ ; π.r₂] φ))
-  -- Inference Rules
-  | modusPonens φ₁ φ₂ : RSPDL₀ φ₁ → RSPDL₀ (φ₁ → φ₂) → RSPDL₀ φ₂
-  | necessitation α φ : RSPDL₀ φ → RSPDL₀ ([α] φ)
-  | consistency φ : RSPDL₀ φ → RSPDL₀ ((¬ φ) → ⊥')
-  | explosion φ : RSPDL₀ ⊥' → RSPDL₀ φ
-  | classicalNegation φ : RSPDL₀ ((¬ φ) → ⊥') → RSPDL₀ φ
+  | functionalR₁ φ : Axiom ((⟨π.r₁⟩ φ) → ([π.r₁] φ))
+  | functionalR₂ φ : Axiom ((⟨π.r₂⟩ φ) → ([π.r₂] φ))
+  | temporalForward φ : Axiom (φ → ([π.s₁] ⟨π.r₁⟩ φ))
+  | temporalBackward φ : Axiom (⟨π.s₁⟩ ⟨π.r₁⟩ φ → φ)
+  | s₁r₁Converse φ : Axiom ((⟨π.s₁⟩ φ) → (⟨π.r₁⟩ φ))
+  | r₁s₁Converse φ : Axiom ((⟨π.r₁⟩ φ) → (⟨π.s₁⟩ φ))
+  | temporalForward₂ φ : Axiom (φ → ([π.s₂] ⟨π.r₂⟩ φ))
+  | temporalBackward₂ φ : Axiom (⟨π.s₂⟩ ⟨π.r₂⟩ φ → φ)
+  | s₂r₂Converse φ : Axiom ((⟨π.s₂⟩ φ) → (⟨π.r₂⟩ φ))
+  | r₂s₂Converse φ : Axiom (⟨π.r₂⟩ φ → (⟨π.s₂⟩ φ))
+  | sameDomain : Axiom ((⟨π.r₁⟩ ⊤') ↔ (⟨π.r₂⟩ ⊤'))
+  | unicity φ : Axiom ((⟨π.s₁ ; π.r₁⟩ φ) ↔ ([π.s₁ ; π.r₁] φ))
+  | storeRestoreId φ : Axiom (([π.s₁ ; π.r₂] φ) → φ)
+  | storeRestoreDiamond φ : Axiom (φ → ([π.s₁ ; π.r₂] ⟨π.s₁ ; π.r₂⟩ φ))
+  | storeRestoreIterate φ : Axiom (([π.s₁ ; π.r₂] φ) → ([π.s₁ ; π.r₂] [π.s₁ ; π.r₂] φ))
 
-notation:40 " ⊢ " φ => RSPDL₀ φ
+-- Deduction system with context.
+inductive Deduction : Set Φ → Φ → Prop where
+  | premise (Γ : Set Φ) (φ : Φ) : (φ ∈ Γ) → Deduction Γ φ
+  | axiom' (Γ : Set Φ) (φ : Φ) : Axiom φ → Deduction Γ φ
+  | modusPonens (Γ : Set Φ) (φ ψ : Φ) : Deduction Γ φ → Deduction Γ (φ → ψ) → Deduction Γ ψ
+  | necessitation (Γ : Set Φ) (α : π) (φ : Φ) : Deduction ∅ φ → Deduction Γ ([α] φ)
+  | consistency (Γ : Set Φ) (φ : Φ) : Deduction Γ φ → Deduction Γ ((¬ φ) → ⊥')
+  | explosion (Γ : Set Φ) (φ : Φ) : Deduction Γ ⊥' → Deduction Γ φ
+  | classicalNegation (Γ : Set Φ) (φ : Φ) : Deduction Γ ((¬ φ) → ⊥') → Deduction Γ φ
+
+notation:40 Γ " ⊢ " φ => Deduction Γ φ
+
+notation:40 "⊢ " φ => ∅ ⊢ φ

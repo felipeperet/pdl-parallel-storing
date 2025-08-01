@@ -1,4 +1,3 @@
-import Mathlib.Data.Finset.Basic
 import Mathlib.Data.Set.Lattice
 
 import PdlParallelStoring.AxiomaticSystem
@@ -12,88 +11,23 @@ open Classical
 --   - iteration (★)
 --   - parallel composition (‖).
 
-def listToConjunction : List Φ → Φ
-  | [] => ⊤'
-  | [φ] => φ
-  | φ :: φs => φ ∧ listToConjunction φs
+def IsConsistent (Γ : Set Φ) : Prop :=
+  ¬ (Γ ⊢ ⊥')
 
-noncomputable def finsetToConjunction (φs : Finset Φ) : Φ :=
-  listToConjunction φs.toList
-
-def IsConsistent (s : Set Φ) : Prop :=
-  ¬ ∃ (φs : Finset Φ), (∀ φ ∈ φs, φ ∈ s) ∧ (⊢ (finsetToConjunction φs → ⊥'))
+def IsMaximal (Γ : Set Φ) : Prop :=
+  IsConsistent Γ ∧
+  ∀ {φ}, (φ ∉ Γ) → ¬ IsConsistent (Γ ∪ {φ})
 
 lemma consistent_empty : IsConsistent ∅ := by
   sorry
 
 lemma deduction_consistency (φ : Φ) : ((⊢ φ) ↔ ¬ IsConsistent {¬ φ}) := by
-  constructor
-  · intros hProv
-    rewrite [IsConsistent]
-    push_neg
-    use {¬ φ}
-    constructor
-    · simp
-    · have hEq : finsetToConjunction {¬ φ} = ¬ φ := by
-        rewrite [finsetToConjunction, Finset.toList_singleton]
-        trivial
-      rewrite [hEq]
-      exact RSPDL₀.consistency φ hProv
-  · contrapose
-    intro hNotProv
-    apply Classical.not_not.mpr
-    by_contra hInconsistent
-    rewrite [IsConsistent] at hInconsistent
-    push_neg at hInconsistent
-    obtain ⟨φ₂s, hSubset, hDerivesFalse⟩ := hInconsistent
-    by_cases hEmpty : φ₂s = ∅
-    case pos =>
-      rewrite [hEmpty] at hDerivesFalse
-      have hEq : finsetToConjunction ∅ = _root_.true := by
-        simp [finsetToConjunction, listToConjunction]
-      rewrite [hEq] at hDerivesFalse
-      have hTrue : ⊢ ⊤' := by
-        apply RSPDL₀.tautology
-        have hProp : IsPropositional ⊤' := by simp only [IsPropositional]
-        use hProp
-        simp [eval]
-      have hFalse : ⊢ ⊥' := RSPDL₀.modusPonens ⊤' ⊥' hTrue hDerivesFalse
-      have hProvPhi : ⊢ φ := RSPDL₀.explosion φ hFalse
-      exact hNotProv hProvPhi
-    case neg =>
-      have hNonempty : φ₂s.Nonempty := Finset.nonempty_of_ne_empty hEmpty
-      obtain ⟨φ₂, hφ₂In⟩ := hNonempty
-      have hφ₂Eq : φ₂ = ¬ φ := by
-        have hφ₂InSet : φ₂ ∈ {¬ φ} := hSubset φ₂ hφ₂In
-        simp only [Set.mem_singleton_iff] at hφ₂InSet
-        exact hφ₂InSet
-      have hSingleton : φ₂s = {¬ φ} := by
-        ext φ₃
-        simp only [Finset.mem_singleton]
-        constructor
-        · intro hφ₃In
-          have hφ₃InSet := hSubset φ₃ hφ₃In
-          simp only [Set.mem_singleton_iff] at hφ₃InSet
-          exact hφ₃InSet
-        · intro hφ₃Eq
-          rewrite [hφ₃Eq, ← hφ₂Eq]
-          exact hφ₂In
-      rewrite [hSingleton] at hDerivesFalse
-      have hEq : finsetToConjunction {¬ φ} = ¬ φ := by
-        rewrite [finsetToConjunction, Finset.toList_singleton]
-        trivial
-      rewrite [hEq] at hDerivesFalse
-      have hProv : ⊢ φ := RSPDL₀.classicalNegation φ hDerivesFalse
-      exact hNotProv hProv
+  sorry
 
 lemma unprovable_consistent (φ : Φ) : (¬ ⊢ φ) → IsConsistent {¬ φ} := by
   intros hNotProv
   rewrite [deduction_consistency φ] at hNotProv
   exact Classical.not_not.mp hNotProv
-
-def IsMaximal (s : Set Φ) : Prop :=
-  IsConsistent s ∧
-  ∀ {φ : Φ}, (φ ∉ s) → ¬ IsConsistent (s ∪ {φ})
 
 def MaximalConsistentSet : Type :=
   {s : Set Φ // IsMaximal s}
@@ -106,15 +40,12 @@ lemma mcs_no_contradiction (Γ : MaximalConsistentSet) (φ : Φ) : (φ ∈ Γ.va
 
 namespace Lindenbaum
 
-def extend (φ : Φ) (Γ : Set Φ) : Set Φ :=
-  Γ ∪ {φ}
-
-noncomputable def insert : Option Φ → Set Φ → Set Φ
+def insert : Option Φ → Set Φ → Set Φ
   | none, Γ => Γ
   | some φ, Γ =>
-      if IsConsistent (extend φ Γ)
-      then extend φ Γ
-      else extend (¬ φ) Γ
+      if IsConsistent (Γ ∪ {φ})
+      then Γ ∪ {φ}
+      else Γ ∪ {¬ φ}
 
 def delta (Γ : Set Φ) : Nat → Set Φ
   | 0 => Γ
@@ -125,7 +56,7 @@ def max (Γ : Set Φ) : Set Φ :=
 
 lemma consistency_either (Γ : Set Φ) (φ : Φ) :
     IsConsistent Γ →
-    IsConsistent (extend φ Γ) ∨ IsConsistent (extend (¬ φ) Γ) := by
+    IsConsistent (Γ ∪ {φ}) ∨ IsConsistent (Γ ∪ {¬ φ}) := by
   sorry
 
 lemma insert_preserves_consistency (opt_φ : Option Φ) (Γ : Set Φ) :
@@ -134,7 +65,7 @@ lemma insert_preserves_consistency (opt_φ : Option Φ) (Γ : Set Φ) :
   cases opt_φ with
   | none => exact hConsistent
   | some φ =>
-      simp [insert]
+      rewrite [insert]
       split_ifs with h
       . exact h
       . have hEither := consistency_either Γ φ hConsistent
@@ -159,7 +90,7 @@ lemma lindenbaum (Γ : Set Φ) : IsConsistent Γ → ∃ (Δ : MaximalConsistent
 end Lindenbaum
 
 def canonicalRelation (α : π) (Γ Δ : MaximalConsistentSet) : Prop :=
-  ∀ φ, (([α] φ) ∈ Γ.val) → φ ∈ Δ.val
+  ∀ {φ}, (([α] φ) ∈ Γ.val) → φ ∈ Δ.val
 
 def canonicalFrame : Frame where
   W := MaximalConsistentSet
@@ -189,13 +120,13 @@ instance : ProperStandard canonicalModel where
 lemma contrapositive_completeness :
     ∀ {φ : Φ}, (¬ ⊢ φ) →
     ∃ (M : Model) (_ : ProperStandard M), ¬ (M ⊨ φ) := by
-  intro φ hNotProv
+  intros φ hNotProv
   have h₁ : IsConsistent {¬ φ} := unprovable_consistent φ hNotProv
   obtain ⟨Γ, h₂⟩ := Lindenbaum.lindenbaum {¬ φ} h₁
   have h₃ : (¬ φ) ∈ Γ.val := h₂ (Set.mem_singleton (¬ φ))
   have h₄ : φ ∉ Γ.val := by
     by_contra hIn
-    have hNotIn:= mcs_no_contradiction Γ φ hIn
+    have hNotIn : (¬ φ) ∉ Γ.val := mcs_no_contradiction Γ φ hIn
     exact hNotIn h₃
   have h₅ : ¬ ((canonicalModel, Γ) ⊨ φ) := by
     rewrite [truth_lemma φ Γ]
@@ -206,7 +137,7 @@ lemma contrapositive_completeness :
   exact h₅ hSat
 
 theorem completeness : ∀ {φ : Φ}, (⊨ φ) → (⊢ φ) := by
-  intro φ hValid
+  intros φ hValid
   by_contra hNotProv
   obtain ⟨M, _, hNotGlobalSat⟩ := contrapositive_completeness hNotProv
   have hGlobalSat : M ⊨ φ := hValid rfl

@@ -39,26 +39,6 @@ postfix:max " ★" => iter
 infixr:60 " ‖ " => parallel
 postfix:max " ?" => test
 
-def IsPropositional : Φ → Prop
-  | Φ.false => True
-  | Φ.atomic _ => True
-  | Φ.neg φ => IsPropositional φ
-  | Φ.conj φ₁ φ₂ => IsPropositional φ₁ ∧ IsPropositional φ₂
-  | Φ.diamond _ _ => False
-
-def eval (assign : Ψ → Bool) : (φ : Φ) → IsPropositional φ → Bool
-  | Φ.false, _ => false
-  | Φ.atomic ψ, _ => assign ψ
-  | Φ.neg φ, h => !(eval assign φ h)
-  | Φ.conj φ₁ φ₂, h =>
-      let h₁ : IsPropositional φ₁ := h.1
-      let h₂ : IsPropositional φ₂ := h.2
-      (eval assign φ₁ h₁) && (eval assign φ₂ h₂)
-  | Φ.diamond _ _, h => False.elim h
-
-def IsTautology (φ : Φ) : Prop :=
-  ∃ (h : IsPropositional φ), ∀ assign, eval assign φ h = Bool.true
-
 -- Formulae enumeration.
 axiom encode : Φ → Nat
 axiom decode : Nat → Option Φ

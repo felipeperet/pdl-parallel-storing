@@ -30,7 +30,7 @@ def satisfies (M : Model) (w : M.F.W) : Φ → Prop
   | Φ.conj φ₁ φ₂ => satisfies M w φ₁ ∧ satisfies M w φ₂
   | Φ.diamond α φ => ∃ w', M.F.R α w w' ∧ satisfies M w' φ
 
-notation:40 "(" κ "," s ") " " ⊨ " φ => satisfies κ s φ
+notation:40 "(" κ ", " s ") " " ⊨ " φ => satisfies κ s φ
 
 -- Def) A model is standard when it satisfies the following conditions:
 class Standard (M : Model) where
@@ -100,7 +100,7 @@ notation:40 F " ⊨ " φ => validInProperFrame F φ
 def valid (φ : Φ) : Prop :=
   ∀ {F : Frame} [Proper F], F ⊨ φ
 
-notation:40 " ⊨ " φ => valid φ
+notation:40 "⊨ " φ => valid φ
 
 -- Def) Semantic equivalence.
 def semEquiv (φ₁ φ₂ : Φ) : Prop :=
