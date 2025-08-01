@@ -12,7 +12,7 @@ lemma soundness_composition (α β : π) (φ : Φ) : ⊨ ([α;β] φ) ↔ ([α] 
     simp only [not_exists, not_and, Decidable.not_not] at hAll
     obtain ⟨s, hRws, t, hRst, hPhiNotHolds⟩ := hEx
     have hReach : M.F.R (α ; β) w t := by
-      rw [Standard.comp]
+      rewrite [Standard.comp]
       use s
     have hPhiHolds : (M, t) ⊨ φ := hAll t hReach
     exact hPhiNotHolds hPhiHolds
@@ -22,7 +22,7 @@ lemma soundness_composition (α β : π) (φ : Φ) : ⊨ ([α;β] φ) ↔ ([α] 
     simp only [not_exists, not_and, Decidable.not_not] at hAll
     obtain ⟨s, hRws, hPhiNotHolds⟩ := hEx
     have hComp : Relation.Comp (M.F.R α) (M.F.R β) w s := by
-      rw [← Standard.comp]
+      rewrite [← Standard.comp]
       exact hRws
     obtain ⟨t, hRwt, hRts⟩ := hComp
     have hPhiHolds : (M, s) ⊨ φ := hAll t hRwt s hRts
@@ -38,13 +38,13 @@ lemma soundness_choice (α β : π) (φ : Φ) : ⊨ ([α ∪ β] φ) ↔ ([α] �
     have hAlphaBox : ∀ (x : M.F.W), M.F.R α w x → (M, x) ⊨ φ := by
       intros t hRwt
       apply hSat₁
-      rw [Standard.choice]
+      rewrite [Standard.choice]
       left
       exact hRwt
     obtain ⟨s, hRws, hPhiNotHolds⟩ := hSat₂ hAlphaBox
     have hPhiHolds : (M, s) ⊨ φ := by
       apply hSat₁
-      rw [Standard.choice]
+      rewrite [Standard.choice]
       right
       exact hRws
     exact hPhiNotHolds hPhiHolds
@@ -54,7 +54,7 @@ lemma soundness_choice (α β : π) (φ : Φ) : ⊨ ([α ∪ β] φ) ↔ ([α] �
     simp only [not_exists, not_and, Decidable.not_not] at hAll
     obtain ⟨s, hRws, hPhiNotHolds⟩ := hEx
     obtain ⟨hAll₁, hAll₂⟩ := hAll
-    rw [Standard.choice] at hRws
+    rewrite [Standard.choice] at hRws
     cases hRws with
     | inl hAlpha =>
         have hPhiHolds : (M, s) ⊨ φ := hAll₁ s hAlpha
@@ -81,15 +81,15 @@ lemma soundness_functional_r₁ (φ : Φ) : ⊨ (⟨π.r₁⟩ φ) → ([π.r₁
   simp only [satisfies, Decidable.not_not] at hSat
   obtain ⟨h₁, h₂⟩ := hSat
   obtain ⟨s, hRws, hSat⟩ := h₁
-  rw [P.r₁] at hRws
+  rewrite [P.r₁] at hRws
   obtain ⟨s₁, s₂, hEq₁, hEq₂⟩ := hRws
   obtain ⟨s', hRws', hNotSat⟩ := h₂
-  rw [P.r₁] at hRws'
+  rewrite [P.r₁] at hRws'
   obtain ⟨s₁', s₂', hEq₁', hEq₂'⟩ := hRws'
   have hSame : s₁ ⋆ s₂ = s₁'⋆ s₂' := by rw [← hEq₁, hEq₁']
   have ⟨hs₁Eq, hs₂Eq⟩ := State.inject.mp hSame
   have s'Eq : s' = s := by rw [hEq₂', ← hs₁Eq, ← hEq₂]
-  rw [s'Eq] at hNotSat
+  rewrite [s'Eq] at hNotSat
   exact hNotSat hSat
 
 lemma soundness_temporal_forward (φ : Φ) : ⊨ φ → ([π.s₁] ⟨π.r₁⟩ φ) := by
@@ -100,9 +100,9 @@ lemma soundness_temporal_forward (φ : Φ) : ⊨ φ → ([π.s₁] ⟨π.r₁⟩
   obtain ⟨s, hAnd⟩ := hSat₂
   obtain ⟨hRws, hAll⟩ := hAnd
   have hR₁ : M.F.R π.r₁ s w :=  by
-    rw [P.s₁] at hRws
+    rewrite [P.s₁] at hRws
     obtain ⟨w', t, hw_eq, hs_eq⟩ := hRws
-    rw [P.r₁]
+    rewrite [P.r₁]
     use w', t
   have hNotSat : ¬ (M, w) ⊨ φ := hAll w hR₁
   exact hNotSat hSat₁
@@ -118,7 +118,7 @@ lemma soundness_same_domain : ⊨ (⟨π.r₁⟩ ⊤') ↔ (⟨π.r₂⟩ ⊤') 
     simp [P.r₁] at hRws
     obtain ⟨s', hwEq⟩ := hRws
     have hR₂ : M.F.R π.r₂ w s' := by
-      rw [P.r₂, hwEq]
+      rewrite [P.r₂, hwEq]
       use s, s'
     exact hAll s' hR₂
   . intros hSat₁
@@ -130,7 +130,7 @@ lemma soundness_same_domain : ⊨ (⟨π.r₁⟩ ⊤') ↔ (⟨π.r₂⟩ ⊤') 
     simp [P.r₂] at hRwt
     obtain ⟨s', ht_eq⟩ := hRwt
     have hR₁ : M.F.R π.r₁ w s' := by
-      rw [P.r₁, ht_eq]
+      rewrite [P.r₁, ht_eq]
       use s', t
     exact hAll s' hR₁
 
@@ -143,15 +143,15 @@ lemma soundness_unicity (φ : Φ) : ⊨ (⟨π.s₁ ; π.r₁⟩ φ) ↔ ([π.s�
     obtain ⟨s, hRws, hSat₁⟩ := hSat₁
     obtain ⟨x, hRwx, hNotSat⟩ := hSat₂
     have hsEqw : s = w := by
-      rw [Standard.comp] at hRws
-      rw [s₁_comp_r₁] at hRws
+      rewrite [Standard.comp] at hRws
+      rewrite [s₁_comp_r₁] at hRws
       exact hRws.symm
     have hxEqw : x = w := by
-      rw [Standard.comp] at hRwx
-      rw [s₁_comp_r₁] at hRwx
+      rewrite [Standard.comp] at hRwx
+      rewrite [s₁_comp_r₁] at hRwx
       exact hRwx.symm
-    rw [hsEqw] at hSat₁
-    rw [hxEqw] at hNotSat
+    rewrite [hsEqw] at hSat₁
+    rewrite [hxEqw] at hNotSat
     exact hNotSat hSat₁
   . intros hSat
     simp only [satisfies, Decidable.not_not, not_exists, not_and] at hSat
@@ -168,7 +168,7 @@ lemma soundness_store_restore_id (φ : Φ) : ⊨ ([π.s₁ ; π.r₂] φ) → φ
   simp only
     [satisfies, not_exists, not_and, Decidable.not_not, not_forall, Classical.not_imp] at hSat
   have hReach : M.F.R (π.s₁ ; π.r₂) w w := by
-    rw [Standard.comp, s₁_comp_r₂]
+    rewrite [Standard.comp, s₁_comp_r₂]
     simp only [State.equiv.refl]
   have hPhiHolds : (M, w) ⊨ φ := hSat w hReach
   exact hPhiNotHolds hPhiHolds
@@ -180,7 +180,7 @@ lemma soundness_store_restore_diamond (φ : Φ) : ⊨ φ → ([π.s₁ ; π.r₂
   simp only [not_exists, not_and] at hSat₂
   obtain ⟨s, hRws, hAll⟩ := hSat₂
   have hReach : M.F.R (π.s₁ ; π.r₂) s w := by
-    rw [Standard.comp, s₁_comp_r₂] at *
+    rewrite [Standard.comp, s₁_comp_r₂] at *
     exact State.equiv.symm hRws
   have hPhiNotHolds : ¬ (M, w) ⊨ φ := hAll w hReach
   exact hPhiNotHolds hPhiHolds
@@ -193,7 +193,7 @@ lemma soundness_store_restore_iterate (φ : Φ) :
   simp only [not_exists, not_and, Decidable.not_not] at hAll
   obtain ⟨s, hRws, t, hRst, hPhiNotHolds⟩ := hSat
   have hReach : M.F.R (π.s₁ ; π.r₂) w t := by
-    rw [Standard.comp, s₁_comp_r₂] at *
+    rewrite [Standard.comp, s₁_comp_r₂] at *
     simp only [State.equiv.trans hRws hRst]
   have hPhiHolds : (M, t) ⊨ φ := hAll t hReach
   exact hPhiNotHolds hPhiHolds

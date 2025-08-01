@@ -7,7 +7,6 @@ import PdlParallelStoring.Syntax
 ----------------------------------------------------------------------------------------------------
 -- Axiomatic System for RSPDL₀ (Hilbert-style with context)
 ----------------------------------------------------------------------------------------------------
-
 -- This is a fragment called RSPDL₀. In this fragment, we do not allow the use of the operators of
 -- test (?), iteration (★) and parallel composition (‖).
 
