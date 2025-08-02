@@ -38,9 +38,6 @@ inductive Deduction : Set Φ → Φ → Prop where
   | axiom' (Γ : Set Φ) (φ : Φ) : Axiom φ → Deduction Γ φ
   | modusPonens (Γ : Set Φ) (φ ψ : Φ) : Deduction Γ φ → Deduction Γ (φ → ψ) → Deduction Γ ψ
   | necessitation (Γ : Set Φ) (α : π) (φ : Φ) : Deduction ∅ φ → Deduction Γ ([α] φ)
-  | consistency (Γ : Set Φ) (φ : Φ) : Deduction Γ φ → Deduction Γ ((¬ φ) → ⊥')
-  | explosion (Γ : Set Φ) (φ : Φ) : Deduction Γ ⊥' → Deduction Γ φ
-  | classicalNegation (Γ : Set Φ) (φ : Φ) : Deduction Γ ((¬ φ) → ⊥') → Deduction Γ φ
 
 notation:40 Γ " ⊢ " φ => Deduction Γ φ
 

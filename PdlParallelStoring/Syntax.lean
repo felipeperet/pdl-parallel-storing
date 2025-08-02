@@ -1,20 +1,20 @@
 ----------------------------------------------------------------------------------------------------
 -- PRSPDL Syntax
 ----------------------------------------------------------------------------------------------------
--- We define propositions and instructions as aliases for strings.
-abbrev Ψ := String
+-- We represent literals as strings.
+abbrev Literal := String
 
 -- Mutual recursive syntax for formulae and programs.
 mutual
   inductive Φ where
     | false : Φ
-    | atomic : Ψ → Φ
+    | atomic : Literal → Φ
     | neg : Φ → Φ
     | conj : Φ → Φ → Φ
     | diamond : π → Φ → Φ
     deriving BEq
   inductive π where
-    | atomic : Ψ → π
+    | atomic : Literal → π
     | comp : π → π → π
     | choice : π → π → π
     | iter : π → π

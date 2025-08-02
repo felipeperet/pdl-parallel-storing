@@ -1,7 +1,7 @@
 import Mathlib.Data.Set.Lattice
 
 import PdlParallelStoring.AxiomaticSystem
-import PdlParallelStoring.Properties
+import PdlParallelStoring.Semantics
 
 open Classical
 
@@ -14,7 +14,7 @@ open Classical
 def IsConsistent (Γ : Set Φ) : Prop :=
   ¬ (Γ ⊢ ⊥')
 
-def IsMaximal (Γ : Set Φ) : Prop :=
+def IsMaximalConsistent (Γ : Set Φ) : Prop :=
   IsConsistent Γ ∧
   ∀ {φ}, (φ ∉ Γ) → ¬ IsConsistent (Γ ∪ {φ})
 
@@ -27,10 +27,10 @@ lemma deduction_consistency (φ : Φ) : ((⊢ φ) ↔ ¬ IsConsistent {¬ φ}) :
 lemma unprovable_consistent (φ : Φ) : (¬ ⊢ φ) → IsConsistent {¬ φ} := by
   intros hNotProv
   rewrite [deduction_consistency φ] at hNotProv
-  exact Classical.not_not.mp hNotProv
+  exact Decidable.not_not.mp hNotProv
 
 def MaximalConsistentSet : Type :=
-  {s : Set Φ // IsMaximal s}
+  {Γ : Set Φ // IsMaximalConsistent Γ}
 
 lemma mcs_complete (Γ : MaximalConsistentSet) (φ : Φ) : (φ ∈ Γ.val) ∨ (¬ φ) ∈ Γ.val := by
   sorry
@@ -53,6 +53,31 @@ def delta (Γ : Set Φ) : Nat → Set Φ
 
 def max (Γ : Set Φ) : Set Φ :=
   ⋃ n, delta Γ n
+
+lemma cut_aux : ∀ {Δ ψ}, (Δ ⊢ ψ) → ∀ {Γ φ}, (Δ = (Γ ∪ {φ})) → (Γ ⊢ φ) → Γ ⊢ ψ := by
+  intros _ _ h
+  induction h with
+  | premise _ φ h_in =>
+      intros Δ _ h_eq h_deriv
+      rewrite [h_eq] at h_in
+      cases h_in with
+      | inl h_in_D => exact Deduction.premise Δ φ h_in_D
+      | inr h_in_singleton =>
+          rewrite [Set.mem_singleton_iff] at h_in_singleton
+          rewrite [h_in_singleton]
+          exact h_deriv
+  | axiom' _ φ h_ax =>
+      intros Δ _ _ _
+      exact Deduction.axiom' Δ φ h_ax
+  | modusPonens Γ φ ψ h_ant h_cond ih₁ ih₂ =>
+      intros Δ χ h_eq h_deriv
+      sorry
+  | necessitation =>
+      sorry
+
+theorem cut : ∀ {φ ψ : Φ}, (Γ ⊢ φ) → (Γ ∪ {φ} ⊢ ψ) → Γ ⊢ ψ := by
+  intros φ ψ h₁ h₂
+  exact cut_aux h₂ rfl h₁
 
 lemma consistency_either (Γ : Set Φ) (φ : Φ) :
     IsConsistent Γ →
@@ -97,8 +122,8 @@ def canonicalFrame : Frame where
   R := canonicalRelation
   nonempty := sorry
 
-def canonicalValuation (ψ : Ψ) (Γ : MaximalConsistentSet) : Prop :=
-  Φ.atomic ψ ∈ Γ.val
+def canonicalValuation (lit : Literal) (Γ : MaximalConsistentSet) : Prop :=
+  (Φ.atomic lit) ∈ Γ.val
 
 def canonicalModel : Model where
   F := canonicalFrame

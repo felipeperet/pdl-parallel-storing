@@ -20,7 +20,7 @@ structure Frame where
 --        - V : Φ → 2^W is a valuation function mapping atomic formulae into subsets of W.
 structure Model where
   F : Frame
-  V : Ψ → F.W → Prop
+  V : Literal → F.W → Prop
 
 -- Def) Satisfaction relation.
 def satisfies (M : Model) (w : M.F.W) : Φ → Prop

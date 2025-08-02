@@ -3,10 +3,10 @@ import PdlParallelStoring.Properties
 
 open Classical
 
-lemma soundness_composition (α β : π) (φ : Φ) : ⊨ ([α;β] φ) ↔ ([α] [β] φ) := by
+lemma soundness_composition (α β : π) (φ : Φ) : ⊨ ([α ; β] φ) ↔ ([α] [β] φ) := by
   intros _ _ M _ _ w
   constructor
-  . intros hAnd
+  . intro hAnd
     obtain ⟨hAll, hEx⟩ := hAnd
     simp only [satisfies, Decidable.not_not] at hAll hEx
     simp only [not_exists, not_and, Decidable.not_not] at hAll
@@ -16,7 +16,7 @@ lemma soundness_composition (α β : π) (φ : Φ) : ⊨ ([α;β] φ) ↔ ([α] 
       use s
     have hPhiHolds : (M, t) ⊨ φ := hAll t hReach
     exact hPhiNotHolds hPhiHolds
-  . intros hSat
+  . intro hSat
     obtain ⟨hAll, hEx⟩ := hSat
     simp only [satisfies, Decidable.not_not] at hAll hEx
     simp only [not_exists, not_and, Decidable.not_not] at hAll
@@ -31,7 +31,7 @@ lemma soundness_composition (α β : π) (φ : Φ) : ⊨ ([α;β] φ) ↔ ([α] 
 lemma soundness_choice (α β : π) (φ : Φ) : ⊨ ([α ∪ β] φ) ↔ ([α] φ) ∧ ([β] φ) := by
   intros _ _ M _ _ w
   constructor
-  . intros hAnd
+  . intro hAnd
     obtain ⟨hSat₁, hSat₂⟩ := hAnd
     simp only [satisfies, not_exists, not_and, Decidable.not_not] at hSat₁ hSat₂
     simp only [not_forall] at hSat₂
@@ -48,7 +48,7 @@ lemma soundness_choice (α β : π) (φ : Φ) : ⊨ ([α ∪ β] φ) ↔ ([α] �
       right
       exact hRws
     exact hPhiNotHolds hPhiHolds
-  . intros hAnd
+  . intro hAnd
     obtain ⟨hAll, hEx⟩ := hAnd
     simp only [satisfies, Decidable.not_not] at hAll hEx
     simp only [not_exists, not_and, Decidable.not_not] at hAll
@@ -216,26 +216,6 @@ lemma soundness_necessitation (α : π) (φ : Φ) (ih : ⊨ φ) : ⊨ [α] φ :=
   have hPhiHolds : (M, s) ⊨ φ := ih hEq
   exact hPhiNotHolds hPhiHolds
 
-lemma soundness_consistency (φ : Φ) (ih : ⊨ φ) : ⊨ ((¬ φ) → ⊥') := by
-  intros _ _ M _ hEq w h
-  obtain ⟨h₁, _⟩ := h
-  have hPhiNotHolds : ¬ (M, w) ⊨ φ := by
-    simp only [satisfies, Decidable.not_not] at h₁
-    exact h₁
-  have hPhiHolds : (M, w) ⊨ φ := ih hEq
-  exact hPhiNotHolds hPhiHolds
-
-lemma soundness_explosion (φ : Φ) (ih : ⊨ ⊥') : ⊨ φ := by
-  intros _ _ M _ hEq w
-  have hContra : (M, w) ⊨ ⊥' := ih hEq
-  simp only [satisfies] at hContra
-
-lemma soundness_classical_negation (φ : Φ) (ih : ⊨ ((¬ φ) → ⊥')) : ⊨ φ := by
-  intros _ _ M _ hEq w
-  have hNotPhiFalse : (M, w) ⊨ (¬ φ) → ⊥' := ih hEq
-  simp only [satisfies, not_false_eq_true, and_true, Decidable.not_not] at hNotPhiFalse
-  exact hNotPhiFalse
-
 theorem soundness_general : ∀ {Γ : Set Φ} {φ : Φ}, (Γ ⊢ φ) → (∀ ψ ∈ Γ, ⊨ ψ) → ⊨ φ := by
   intros _ _ h
   induction h with
@@ -267,18 +247,6 @@ theorem soundness_general : ∀ {Γ : Set Φ} {φ : Φ}, (Γ ⊢ φ) → (∀ ψ
       apply soundness_necessitation
       apply ih
       simp only [Set.mem_empty_iff_false, IsEmpty.forall_iff, implies_true]
-  | consistency _ _ _ ih =>
-      intros hIn
-      apply soundness_consistency
-      exact ih hIn
-  | explosion _ _ _ ih =>
-      intros hIn
-      apply soundness_explosion
-      exact ih hIn
-  | classicalNegation _ _ _ ih =>
-      intros hIn
-      apply soundness_classical_negation
-      exact ih hIn
 
 theorem soundness : ∀ {φ : Φ}, (⊢ φ) → (⊨ φ) := by
   intros _ h
