@@ -1,32 +1,30 @@
 ----------------------------------------------------------------------------------------------------
 -- PRSPDL Syntax
 ----------------------------------------------------------------------------------------------------
--- We represent literals as strings.
 abbrev Literal := String
 
--- Mutual recursive syntax for formulae and programs.
 mutual
-  inductive Φ where
-    | false : Φ
-    | atomic : Literal → Φ
-    | neg : Φ → Φ
-    | conj : Φ → Φ → Φ
-    | diamond : π → Φ → Φ
+  inductive Formula where
+    | false : Formula
+    | atomic : Literal → Formula
+    | neg : Formula → Formula
+    | conj : Formula → Formula → Formula
+    | diamond : Program → Formula → Formula
     deriving BEq
-  inductive π where
-    | atomic : Literal → π
-    | comp : π → π → π
-    | choice : π → π → π
-    | iter : π → π
-    | parallel : π → π → π
-    | test : Φ → π
-    | s₁ : π
-    | s₂ : π
-    | r₁ : π
-    | r₂ : π
+  inductive Program where
+    | atomic : Literal → Program
+    | comp : Program → Program → Program
+    | choice : Program → Program → Program
+    | iter : Program → Program
+    | parallel : Program → Program → Program
+    | test : Formula → Program
+    | s₁ : Program
+    | s₂ : Program
+    | r₁ : Program
+    | r₂ : Program
     deriving BEq
 end
-open Φ π
+open Formula Program
 
 notation "⊥'" => false
 prefix:max "¬ " => neg
@@ -40,35 +38,35 @@ infixr:60 " ‖ " => parallel
 postfix:max " ?" => test
 
 -- Formulae enumeration.
-axiom encode : Φ → Nat
-axiom decode : Nat → Option Φ
+axiom encode : Formula → Nat
+axiom decode : Nat → Option Formula
 axiom countable : ∀ {φ}, decode (encode φ) = some φ
 
 ----------------------------------------------------------------------------------------------------
 -- Derived Logical Operators
 ----------------------------------------------------------------------------------------------------
 -- Def) ⊤ ≡ ¬⊥
-abbrev true : Φ :=
+abbrev true : Formula :=
   ¬ ⊥'
 notation "⊤'" => true
 
 -- Def) φ₁ ∨ φ₂ ≡ ¬ (¬φ₁ ∧ ¬φ₂)
-abbrev disj (φ₁ φ₂ : Φ) : Φ :=
+abbrev disj (φ₁ φ₂ : Formula) : Formula :=
   ¬ ((¬ φ₁) ∧ (¬ φ₂))
 infixr:60 " ∨ " => disj
 
 -- Def) φ₁ → φ₂ ≡ ¬ φ₁ ∨ φ₂
-abbrev impl (φ₁ φ₂ : Φ) : Φ :=
+abbrev impl (φ₁ φ₂ : Formula) : Formula :=
   (¬ φ₁) ∨ φ₂
 infixr:55 " → " => impl
 
 -- Def) φ₁ ↔ φ₂ ≡ (φ₁ → φ₂) ∧ (φ₂ → φ₁)
-abbrev bicond (φ₁ φ₂ : Φ) : Φ :=
+abbrev bicond (φ₁ φ₂ : Formula) : Formula :=
   (φ₁ → φ₂) ∧ (φ₂ → φ₁)
 infixr:55 " ↔ " => bicond
 
 -- Def) [α] φ ≡ ¬ ⟨α⟩ ¬φ
-abbrev box (α : π) (φ : Φ) : Φ :=
+abbrev box (α : Program) (φ : Formula) : Formula :=
   ¬ (⟨α⟩ (¬ φ))
 notation:50 "[" α "] " φ => box α φ
 
@@ -77,51 +75,10 @@ notation:50 "[" α "] " φ => box α φ
 ----------------------------------------------------------------------------------------------------
 -- Def)   skip α
 --      ≡ ⊤?
-abbrev skip : π :=
+abbrev skip : Program :=
   ⊤' ?
 
 -- Def)   fail α
 --      ≡ ⊥?
-abbrev fail : π :=
+abbrev fail : Program :=
   ⊥' ?
-
--- Def)   if φ₁ → φ₂ | ... | φₙ → αₙ fi
---      ≡  φ₁? ; α₁ ∪ ... ∪ φₙ? ; αₙ
-def pdlIf (branches : List (Φ × π)) : π :=
-  branches.foldr
-    (λ (pair : Φ × π) (acc : π) =>
-      let (φ, α) := pair
-      ((φ ?) ; α) ∪ acc)
-    skip
-
--- Def)   do φ₁ → α₁ | ... | φₙ → α₂ od
---      ≡ (φ₁? ; α₁ ∪ ... ∪ φₙ? ; αₙ)★ ; (¬φ₁ ∧ ... ∧ ¬φₙ)?
-def pdlDo (branches : List (Φ × π)) : π :=
-  let loop : π := (pdlIf branches) ★
-  let exit : Φ :=
-    branches.foldr
-      (λ (pair : Φ × π) (acc : Φ) =>
-        let (φ, _) := pair
-        (¬ φ) ∧ acc)
-      ⊤'
-  loop ; (exit ?)
-
--- Def)   if φ then α else β
---      ≡ φ? ; α ∪ ¬φ? ; β
-abbrev ifThenElse (φ : Φ) (α β : π) : π :=
-  pdlIf [(φ, α), (¬ φ, β)]
-
-notation "If" c:arg "{" t "}" => ifThenElse c t skip
-notation "If" c:arg "{" t "}" "Else" "{" f "}" => ifThenElse c t f
-
--- Def)   while φ do α
---      ≡ (φ? ; α)★ ; ¬φ?
-abbrev whileDo (φ : Φ) (α : π) : π :=
-  pdlDo [(φ, α)]
-
-notation "While" c:arg "{" b "}" => whileDo c b
-
--- Def)   repeat α until φ
---      ≡ α ; (¬φ? ; α)★ ; φ?
-abbrev repeatUntil (α : π) (φ : Φ) : π :=
-  α ; whileDo (¬ φ) α
