@@ -21,7 +21,10 @@ def IsMaximalConsistent (Γ : Set Formula) : Prop :=
 lemma consistent_empty : IsConsistent ∅ := by
   sorry
 
-lemma weakening : ∀ {Γ Δ : Set Formula} {φ : Formula}, (Γ ⊆ Δ) → (Γ ⊢ φ) → Δ ⊢ φ := by
+lemma weakening : ∀ {Γ Δ : Set Formula} {φ : Formula},
+    (Γ ⊆ Δ) →
+    (Γ ⊢ φ) →
+    Δ ⊢ φ := by
   intros _ _ _ h_sub h_deriv
   induction h_deriv with
   | premise _ _ h_mem =>
@@ -38,7 +41,9 @@ lemma weakening : ∀ {Γ Δ : Set Formula} {φ : Formula}, (Γ ⊆ Δ) → (Γ 
       apply Deduction.necessitation
       exact h_empty
 
-lemma monotonicity : ∀ {Γ Δ : Set Formula} {φ : Formula}, (Γ ⊢ φ) → (Γ ∪ Δ) ⊢ φ := by
+lemma monotonicity : ∀ {Γ Δ : Set Formula} {φ : Formula},
+    (Γ ⊢ φ) →
+    (Γ ∪ Δ) ⊢ φ := by
   intros _ _ _ h_deriv
   apply weakening
   · intro _ hx
@@ -46,78 +51,59 @@ lemma monotonicity : ∀ {Γ Δ : Set Formula} {φ : Formula}, (Γ ⊢ φ) → (
     exact hx
   · exact h_deriv
 
-lemma deduction_theorem : ∀ {Γ : Set Formula} {φ ψ : Formula},
-    (Γ ∪ {φ} ⊢ ψ) → (Γ ⊢ (φ → ψ)) := by
-  intros Γ φ ψ h_union_deriv
-  sorry
-
-lemma deduction_consistency_aux : ∀ {Γ : Set Formula} {φ : Formula},
-    (Γ ⊢ φ) ↔ ¬ IsConsistent (Γ ∪ {¬ φ}) := by
-  intros Γ φ
-  constructor
-  . intros h_deriv h_consist
-    apply h_consist
-    have h₁ : Γ ∪ {¬ φ} ⊢ φ := monotonicity h_deriv
-    have h₂ : Γ ∪ {¬ φ} ⊢ ¬ φ := by
-      apply Deduction.premise
-      simp only [Set.union_singleton, Set.mem_insert_iff, true_or]
-    have h₃ : Γ ∪ {¬ φ} ⊢ φ ∧ ¬ φ := by
-      have h_ax : (Γ ∪ {¬ φ}) ⊢ (φ → ((¬ φ) → (φ ∧ (¬ φ)))) := by
+lemma deduction_theorem_general :
+    ∀ {Δ : Set Formula} {ψ : Formula}, (Δ ⊢ ψ) →
+    ∀ {Γ : Set Formula} {φ : Formula}, (Δ = Γ ∪ {φ}) →
+    (Γ ⊢ (φ → ψ)) := by
+  intros _ _ h Γ φ h_eq
+  induction h with
+  | premise _ χ h_in =>
+      rewrite [h_eq] at h_in
+      cases h_in with
+      | inl h_in₁ =>
+          have h_deriv : Γ ⊢ χ := Deduction.premise Γ χ h_in₁
+          have h_weak : Γ ⊢ (χ → (φ → χ)) := by
+            apply Deduction.axiom'
+            apply Axiom.axiomK
+          exact Deduction.modusPonens Γ χ (φ → χ) h_deriv h_weak
+      | inr h_in₂ =>
+          simp only [Set.mem_singleton_iff] at h_in₂
+          rewrite [h_in₂]
+          apply Deduction.axiom'
+          apply Axiom.axiomI
+  | axiom' _ χ ax =>
+      have h_deriv : Γ ⊢ χ := Deduction.axiom' Γ χ ax
+      have h_step : Γ ⊢ (χ → (φ → χ)) := by
         apply Deduction.axiom'
-        apply Axiom.conjIntro
-      have h_step : (Γ ∪ {¬ φ}) ⊢ ((¬ φ) → (φ ∧ (¬ φ))) := by
-        exact Deduction.modusPonens (Γ ∪ {¬ φ}) φ ((¬ φ) → (φ ∧ (¬ φ))) h₁ h_ax
-      exact Deduction.modusPonens (Γ ∪ {¬ φ}) (¬ φ) (φ ∧ (¬ φ)) h₂ h_step
-    have h₄ : Γ ∪ {¬ φ} ⊢ ((φ ∧ (¬ φ)) → ⊥') := by
-      apply Deduction.axiom'
-      apply Axiom.contradiction
-    exact Deduction.modusPonens (Γ ∪ {¬ φ}) (φ ∧ (¬ φ)) ⊥' h₃ h₄
-  . intros h_inconsistent
-    simp only [IsConsistent, Decidable.not_not] at h_inconsistent
-    have h_imp : Γ ⊢ ((¬ φ) → ⊥') := deduction_theorem h_inconsistent
-    apply Deduction.modusPonens Γ ((¬ φ) → ⊥') φ h_imp
-    apply Deduction.axiom'
-    apply Axiom.reductio
+        apply Axiom.axiomK
+      exact Deduction.modusPonens Γ χ (φ → χ) h_deriv h_step
+  | modusPonens _ χ₁ χ₂ _ _ ih₁ ih₂  =>
+      subst h_eq
+      simp only [forall_const] at ih₁ ih₂
+      have h_comp : Γ ⊢ ((φ → χ₁ → χ₂) → ((φ → χ₁) → (φ → χ₂))) := by
+        apply Deduction.axiom'
+        apply Axiom.axiomS
+      have h_step : Γ ⊢ ((φ → χ₁) → (φ → χ₂)) :=
+        Deduction.modusPonens Γ (φ → χ₁ → χ₂) ((φ → χ₁) → (φ → χ₂)) ih₂ h_comp
+      exact Deduction.modusPonens Γ (φ → χ₁) (φ → χ₂) ih₁ h_step
+  | necessitation _ α χ h_empty_deriv ih =>
+      subst h_eq
+      simp only [forall_const] at ih
+      have h_nec : Γ ⊢ [α] χ := by
+        apply Deduction.necessitation
+        exact h_empty_deriv
+      have h_weak : Γ ⊢ (([α] χ) → (φ → ([α] χ))) := by
+        apply Deduction.axiom'
+        apply Axiom.axiomK
+      exact Deduction.modusPonens Γ ([α] χ) (φ → ([α] χ)) h_nec h_weak
 
-lemma deduction_consistency : ∀ {φ : Formula}, ((⊢ φ) ↔ ¬ IsConsistent {¬ φ}) := by
-  intros φ
-  constructor
-  . sorry
-  . sorry
+theorem deduction_theorem : ∀ {Γ : Set Formula} {φ ψ : Formula},
+    (Γ ∪ {φ} ⊢ ψ) →
+    (Γ ⊢ (φ → ψ)) := by
+  intros _ _ _ h_union_deriv
+  exact deduction_theorem_general h_union_deriv rfl
 
-lemma unprovable_consistent : ∀ {φ : Formula}, (¬ ⊢ φ) → IsConsistent {¬ φ} := by
-  intros _ h_not_prov
-  rewrite [deduction_consistency] at h_not_prov
-  exact Decidable.not_not.mp h_not_prov
-
-def MaximalConsistentSet : Type :=
-  {Γ : Set Formula // IsMaximalConsistent Γ}
-
-lemma mcs_complete (Γ : MaximalConsistentSet) (φ : Formula) : (φ ∈ Γ.val) ∨ (¬ φ) ∈ Γ.val := by
-  sorry
-
-lemma mcs_no_contradiction (Γ : MaximalConsistentSet) (φ : Formula) :
-    (φ ∈ Γ.val) →
-    (¬ φ) ∉ Γ.val := by
-  sorry
-
-namespace Lindenbaum
-
-def insert : Option Formula → Set Formula → Set Formula
-  | none, Γ => Γ
-  | some φ, Γ =>
-      if IsConsistent (Γ ∪ {φ})
-      then Γ ∪ {φ}
-      else Γ ∪ {¬ φ}
-
-def delta (Γ : Set Formula) : Nat → Set Formula
-  | 0 => Γ
-  | n + 1 => insert (decode n) (delta Γ n)
-
-def max (Γ : Set Formula) : Set Formula :=
-  ⋃ n, delta Γ n
-
-lemma cut_aux :
+lemma cut_admissibility_general :
     ∀ {Δ : Set Formula} {ψ : Formula}, (Δ ⊢ ψ) →
     ∀ {Γ: Set Formula} {φ: Formula}, (Δ = (Γ ∪ {φ})) →
     (Γ ⊢ φ) →
@@ -145,9 +131,75 @@ lemma cut_aux :
       intros Δ _ _ _
       exact Deduction.necessitation Δ α φ h_empty_deriv
 
-lemma cut : ∀ {Γ : Set Formula} {φ ψ : Formula}, (Γ ⊢ φ) → (Γ ∪ {φ} ⊢ ψ) → Γ ⊢ ψ := by
+theorem cut_admissibility : ∀ {Γ : Set Formula} {φ ψ : Formula},
+    (Γ ⊢ φ) →
+    (Γ ∪ {φ} ⊢ ψ) →
+    Γ ⊢ ψ := by
   intros _ _ _ h₁ h₂
-  exact cut_aux h₂ rfl h₁
+  exact cut_admissibility_general h₂ rfl h₁
+
+lemma deduction_consistency_aux : ∀ {Γ : Set Formula} {φ : Formula},
+    (Γ ⊢ φ) ↔ ¬ IsConsistent (Γ ∪ {¬ φ}) := by
+  intros Γ φ
+  constructor
+  . intros h_deriv h_consist
+    apply h_consist
+    have h₁ : Γ ∪ {¬ φ} ⊢ φ := monotonicity h_deriv
+    have h₂ : Γ ∪ {¬ φ} ⊢ ¬ φ := by
+      apply Deduction.premise
+      simp only [Set.union_singleton, Set.mem_insert_iff, true_or]
+    have h₃ : Γ ∪ {¬ φ} ⊢ φ ∧ ¬ φ := by
+      have h_ax : (Γ ∪ {¬ φ}) ⊢ (φ → ((¬ φ) → (φ ∧ (¬ φ)))) := by
+        apply Deduction.axiom'
+        apply Axiom.conjIntro
+      have h_step : (Γ ∪ {¬ φ}) ⊢ ((¬ φ) → (φ ∧ (¬ φ))) := by
+        exact Deduction.modusPonens (Γ ∪ {¬ φ}) φ ((¬ φ) → (φ ∧ (¬ φ))) h₁ h_ax
+      exact Deduction.modusPonens (Γ ∪ {¬ φ}) (¬ φ) (φ ∧ (¬ φ)) h₂ h_step
+    have h₄ : Γ ∪ {¬ φ} ⊢ ((φ ∧ (¬ φ)) → ⊥') := by
+      apply Deduction.axiom'
+      apply Axiom.contradiction
+    exact Deduction.modusPonens (Γ ∪ {¬ φ}) (φ ∧ (¬ φ)) ⊥' h₃ h₄
+  . intros h_inconsistent
+    simp only [IsConsistent, Decidable.not_not] at h_inconsistent
+    have h_imp : Γ ⊢ ((¬ φ) → ⊥') := deduction_theorem h_inconsistent
+    apply Deduction.modusPonens Γ ((¬ φ) → ⊥') φ h_imp
+    apply Deduction.axiom'
+    apply Axiom.classicalReductio
+
+lemma deduction_consistency : ∀ {φ : Formula},
+    ((⊢ φ) ↔ ¬ IsConsistent {¬ φ}) := by
+  intros φ
+  have h : (∅ ⊢ φ) ↔ ¬ IsConsistent (∅ ∪ {¬ φ}) := @deduction_consistency_aux ∅ φ
+  simp only [Set.empty_union] at h
+  exact h
+
+def MaximalConsistentSet : Type :=
+  {Γ : Set Formula // IsMaximalConsistent Γ}
+
+lemma mcs_complete (Γ : MaximalConsistentSet) (φ : Formula) :
+    (φ ∈ Γ.val) ∨ (¬ φ) ∈ Γ.val := by
+  sorry
+
+lemma mcs_no_contradiction (Γ : MaximalConsistentSet) (φ : Formula) :
+    (φ ∈ Γ.val) →
+    (¬ φ) ∉ Γ.val := by
+  sorry
+
+namespace Lindenbaum
+
+def insert : Option Formula → Set Formula → Set Formula
+  | none, Γ => Γ
+  | some φ, Γ =>
+      if IsConsistent (Γ ∪ {φ})
+      then Γ ∪ {φ}
+      else Γ ∪ {¬ φ}
+
+def delta (Γ : Set Formula) : Nat → Set Formula
+  | 0 => Γ
+  | n + 1 => insert (decode n) (delta Γ n)
+
+def max (Γ : Set Formula) : Set Formula :=
+  ⋃ n, delta Γ n
 
 lemma consistency_either (Γ : Set Formula) (φ : Formula) :
     IsConsistent Γ →
@@ -169,7 +221,7 @@ lemma consistency_either (Γ : Set Formula) (φ : Formula) :
   apply h₁₁
   intros h₂
   apply h_consistent
-  exact cut h₁₂ h₂
+  exact cut_admissibility h₁₂ h₂
 
 lemma insert_preserves_consistency (opt_φ : Option Formula) (Γ : Set Formula) :
     IsConsistent Γ →
@@ -196,7 +248,9 @@ lemma delta_preserves_consistency (Γ : Set Formula) (n : Nat) :
       apply insert_preserves_consistency
       exact ih
 
-lemma lindenbaum (Γ : Set Formula) : IsConsistent Γ → ∃ (Δ : MaximalConsistentSet), Γ ⊆ Δ.val := by
+lemma lindenbaum (Γ : Set Formula) :
+    IsConsistent Γ →
+    ∃ (Δ : MaximalConsistentSet), Γ ⊆ Δ.val := by
   sorry
 
 end Lindenbaum
@@ -234,7 +288,9 @@ lemma contrapositive_completeness :
     ∀ {φ : Formula}, (¬ ⊢ φ) →
     ∃ (M : Model) (_ : ProperStandard M), ¬ (M ⊨ φ) := by
   intros φ h_not_prov
-  have h₁ : IsConsistent {¬ φ} := unprovable_consistent h_not_prov
+  have h₁ : IsConsistent {¬ φ} := by
+    rewrite [deduction_consistency] at h_not_prov
+    exact Decidable.not_not.mp h_not_prov
   obtain ⟨Γ, h₂⟩ := Lindenbaum.lindenbaum {¬ φ} h₁
   have h₃ : (¬ φ) ∈ Γ.val := h₂ (Set.mem_singleton (¬ φ))
   have h₄ : φ ∉ Γ.val := by
@@ -249,7 +305,9 @@ lemma contrapositive_completeness :
   have h_sat : (canonicalModel, Γ) ⊨ φ := h_global_sat
   exact h₅ h_sat
 
-theorem completeness : ∀ {φ : Formula}, (⊨ φ) → (⊢ φ) := by
+theorem completeness : ∀ {φ : Formula},
+    (⊨ φ) →
+    (⊢ φ) := by
   intros φ h_valid
   by_contra h_not_prov
   obtain ⟨M, _, h_not_global_sat⟩ := contrapositive_completeness h_not_prov

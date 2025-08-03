@@ -11,16 +11,20 @@ open Program
 -- test (?), iteration (★) and parallel composition (‖).
 
 inductive Axiom : Formula → Prop where
-  -- Classical Logic Axioms
-  | contradiction φ : Axiom ((φ ∧ (¬ φ)) → ⊥')
-  | reductio φ : Axiom (((¬ φ) → ⊥') → φ)
+  -- Propositional Logic Axioms
+  | axiomI φ : Axiom (φ → φ)
+  | axiomK φ ψ : Axiom (φ → (ψ → φ))
+  | axiomS φ ψ χ : Axiom ((φ → (ψ → χ)) → ((φ → ψ) → (φ → χ)))
   | conjIntro φ ψ : Axiom (φ → (ψ → (φ ∧ ψ)))
-  | conjElimL φ ψ : Axiom ((φ ∧ ψ) → φ)
-  | conjElimR φ ψ : Axiom ((φ ∧ ψ) → ψ)
+  | conjElimLeft φ ψ : Axiom ((φ ∧ ψ) → φ)
+  | conjElimRight φ ψ : Axiom ((φ ∧ ψ) → ψ)
+  | contradiction φ : Axiom ((φ ∧ (¬ φ)) → ⊥')
+  -- Classical Logic Axiom
+  | classicalReductio φ : Axiom (((¬ φ) → ⊥') → φ)
   -- Modal Axioms
-  | composition α β φ : Axiom (([α ; β] φ) ↔ ([α] [β] φ))
-  | choice α β φ : Axiom (([α ∪ β] φ) ↔ (([α] φ) ∧ ([β] φ)))
-  | K α φ₁ φ₂ : Axiom (([α] (φ₁ → φ₂)) → (([α] φ₁) → ([α] φ₂)))
+  | modalComposition α β φ : Axiom (([α ; β] φ) ↔ ([α] [β] φ))
+  | modalChoice α β φ : Axiom (([α ∪ β] φ) ↔ (([α] φ) ∧ ([β] φ)))
+  | modalK α φ₁ φ₂ : Axiom (([α] (φ₁ → φ₂)) → (([α] φ₁) → ([α] φ₂)))
   -- RSPDL₀ Specific Axioms
   | functionalR₁ φ : Axiom ((⟨r₁⟩ φ) → ([r₁] φ))
   | functionalR₂ φ : Axiom ((⟨r₂⟩ φ) → ([r₂] φ))
@@ -40,13 +44,13 @@ inductive Axiom : Formula → Prop where
 
 -- Deduction system with context.
 inductive Deduction : Set Formula → Formula → Prop where
-  | premise (Γ : Set Formula) (φ : Formula) : (φ ∈ Γ) → Deduction Γ φ
-  | axiom' (Γ : Set Formula) (φ : Formula) : Axiom φ → Deduction Γ φ
-  | modusPonens (Γ : Set Formula) (φ ψ : Formula) :
+  | premise Γ φ : (φ ∈ Γ) → Deduction Γ φ
+  | axiom' Γ φ : Axiom φ → Deduction Γ φ
+  | modusPonens Γ φ ψ :
       Deduction Γ φ →
       Deduction Γ (φ → ψ) →
       Deduction Γ ψ
-  | necessitation (Γ : Set Formula) (α : Program) (φ : Formula) :
+  | necessitation Γ α φ :
       Deduction ∅ φ →
       Deduction Γ ([α] φ)
 
