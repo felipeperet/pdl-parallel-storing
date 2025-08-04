@@ -312,7 +312,9 @@ lemma delta_monotone : ∀ {Γ : Set Formula} {m n : Nat},
   | step _ ih => exact subset_trans ih insert_subset
 
 lemma finite_subset_in_some_delta : ∀ {Γ : Set Formula} {Δ : Set Formula},
-    Set.Finite Δ → (Δ ⊆ max Γ) → ∃ n, Δ ⊆ delta Γ n := by
+    Set.Finite Δ →
+    (Δ ⊆ max Γ) →
+    ∃ n, Δ ⊆ delta Γ n := by
   intros Γ Δ h_finite h_sub
   if h_empty : Δ = ∅ then
     use 0
@@ -404,7 +406,7 @@ def canonicalModel : Model where
   F := canonicalFrame
   V := canonicalValuation
 
-lemma truth_lemma (φ : Formula) (Γ : canonicalModel.F.W) :
+lemma truth_lemma : ∀ {φ : Formula} {Γ : canonicalModel.F.W},
     ((canonicalModel, Γ) ⊨ φ) ↔ φ ∈ Γ.val := by
   sorry
 
@@ -432,7 +434,7 @@ lemma contrapositive_completeness :
     have h_not_in : (¬ φ) ∉ Γ.val := mcs_no_contradiction Γ φ h_in
     exact h_not_in h₃
   have h₅ : ¬ ((canonicalModel, Γ) ⊨ φ) := by
-    rewrite [truth_lemma φ Γ]
+    rewrite [truth_lemma]
     exact h₄
   use canonicalModel, inferInstance
   intro h_global_sat
