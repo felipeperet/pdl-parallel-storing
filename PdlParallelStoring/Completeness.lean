@@ -1,4 +1,5 @@
-import Mathlib.Data.Set.Lattice
+import Mathlib.Data.Finset.Max
+import Mathlib.Data.Set.Finite.Basic
 
 import PdlParallelStoring.AxiomaticSystem
 import PdlParallelStoring.Semantics
@@ -17,9 +18,6 @@ def IsConsistent (Γ : Set Formula) : Prop :=
 def IsMaximalConsistent (Γ : Set Formula) : Prop :=
   IsConsistent Γ ∧
   ∀ {φ}, (φ ∉ Γ) → ¬ IsConsistent (Γ ∪ {φ})
-
-lemma consistent_empty : IsConsistent ∅ := by
-  sorry
 
 lemma weakening : ∀ {Γ Δ : Set Formula} {φ : Formula},
     (Γ ⊆ Δ) →
@@ -176,10 +174,6 @@ lemma deduction_consistency : ∀ {φ : Formula},
 def MaximalConsistentSet : Type :=
   {Γ : Set Formula // IsMaximalConsistent Γ}
 
-lemma mcs_complete (Γ : MaximalConsistentSet) (φ : Formula) :
-    (φ ∈ Γ.val) ∨ (¬ φ) ∈ Γ.val := by
-  sorry
-
 lemma mcs_no_contradiction (Γ : MaximalConsistentSet) (φ : Formula) :
     (φ ∈ Γ.val) →
     (¬ φ) ∉ Γ.val := by
@@ -248,10 +242,150 @@ lemma delta_preserves_consistency (Γ : Set Formula) (n : Nat) :
       apply insert_preserves_consistency
       exact ih
 
+lemma max_extends : ∀ {Γ : Set Formula}, Γ ⊆ max Γ := by
+  intro _ _ h_in
+  rewrite [max, Set.mem_iUnion]
+  use 0
+  rewrite [delta]
+  exact h_in
+
+lemma derivation_finite_support :
+    ∀ {Γ : Set Formula} {φ : Formula}, (Γ ⊢ φ) →
+    ∃ (Δ : Set Formula), Finite Δ ∧ (Δ ⊆ Γ) ∧ (Δ ⊢ φ) := by
+  intros _ _ h_deriv
+  induction h_deriv with
+  | premise _ φ h_mem =>
+      use {φ}
+      constructor
+      · exact Set.finite_singleton φ
+      constructor
+      · intros _ h_in
+        simp only [Set.mem_singleton_iff] at h_in
+        rewrite [h_in]
+        exact h_mem
+      · apply Deduction.premise
+        simp only [Set.mem_singleton_iff]
+  | axiom' _ _ h_ax =>
+      use ∅
+      constructor
+      · exact Set.finite_empty
+      constructor
+      · simp only [Set.empty_subset]
+      · apply Deduction.axiom'
+        exact h_ax
+  | modusPonens _ _ _ _ _ ih₁ ih₂ =>
+      obtain ⟨s₁, h₁_finite, h₁_sub, h₁_deriv⟩ := ih₁
+      obtain ⟨s₂, h₂_finite, h₂_sub, h₂_deriv⟩ := ih₂
+      use s₁ ∪ s₂
+      constructor
+      · exact Set.Finite.union h₁_finite h₂_finite
+      constructor
+      · exact Set.union_subset h₁_sub h₂_sub
+      · apply Deduction.modusPonens
+        · exact weakening Set.subset_union_left h₁_deriv
+        · exact weakening Set.subset_union_right h₂_deriv
+  | necessitation _ _ _ h_empty _ =>
+      use ∅
+      constructor
+      · exact Set.finite_empty
+      constructor
+      · simp only [Set.empty_subset]
+      · apply Deduction.necessitation
+        exact h_empty
+
+lemma insert_subset : ∀ {opt_φ : Option Formula} {Γ : Set Formula},
+    Γ ⊆ insert opt_φ Γ := by
+  intros opt_φ _ φ h_in
+  cases opt_φ with
+  | none =>
+      simp only [insert]
+      exact h_in
+  | some ψ =>
+      simp only [insert]
+      split_ifs <;> (left; exact h_in)
+
+lemma delta_monotone : ∀ {Γ : Set Formula} {m n : Nat},
+    (m ≤ n) → (delta Γ m ⊆ delta Γ n) := by
+  intros _ _ _ h_le
+  induction h_le with
+  | refl => rfl
+  | step _ ih => exact subset_trans ih insert_subset
+
+lemma finite_subset_in_some_delta : ∀ {Γ : Set Formula} {Δ : Set Formula},
+    Set.Finite Δ → (Δ ⊆ max Γ) → ∃ n, Δ ⊆ delta Γ n := by
+  intros Γ Δ h_finite h_sub
+  if h_empty : Δ = ∅ then
+    use 0
+    rewrite [h_empty]
+    simp only [Set.empty_subset]
+  else
+    have h_nonempty : Δ.Nonempty := Set.nonempty_iff_ne_empty.mpr h_empty
+    have h_bounded : ∃ N, ∀ φ ∈ Δ, ∃ n ≤ N, φ ∈ delta Γ n := by
+      obtain ⟨s, hs⟩ := Set.Finite.exists_finset_coe h_finite
+      have h_induction :
+          ∀ {t : Finset Formula}, ((↑t : Set Formula) ⊆ (max Γ)) →
+          ∃ N, ∀ φ ∈ (↑t : Set Formula), ∃ n ≤ N, φ ∈ delta Γ n := by
+        intro t
+        induction t using Finset.induction with
+        | empty =>
+            intro _
+            use 0
+            intros _ h_in
+            simp only [Finset.coe_empty, Set.mem_empty_iff_false] at h_in
+        | insert φ t' h_not_in ih =>
+            intro h_insert_sub
+            have h_phi_in_max : φ ∈ max Γ := by
+              apply h_insert_sub
+              simp only [Finset.coe_insert, Set.mem_insert_iff, Finset.mem_coe, true_or]
+            obtain ⟨n_φ, h_phi_in_n⟩ := Set.mem_iUnion.mp h_phi_in_max
+            have h_t'_sub : (↑t' : Set Formula) ⊆ max Γ := by
+              intros _ h_psi_in
+              apply h_insert_sub
+              simp only [Finset.coe_insert, Set.mem_insert_iff, Finset.mem_coe]
+              exact Or.inr h_psi_in
+            obtain ⟨N_t', hN_t'⟩ := ih h_t'_sub
+            use Nat.max n_φ N_t'
+            intros ψ h_psi_in
+            simp only [Finset.coe_insert, Set.mem_insert_iff, Finset.mem_coe] at h_psi_in
+            cases' Set.mem_insert_iff.mp h_psi_in with h_eq h_in_t'
+            · rewrite [h_eq]
+              use n_φ
+              exact ⟨Nat.le_max_left n_φ N_t', h_phi_in_n⟩
+            · obtain ⟨n, h_n_le, h_psi_in_n⟩ := hN_t' ψ h_in_t'
+              use n
+              exact ⟨le_trans h_n_le (Nat.le_max_right n_φ N_t'), h_psi_in_n⟩
+      rewrite [← hs] at h_sub
+      have h_result := h_induction h_sub
+      rewrite [hs] at h_result
+      exact h_result
+    obtain ⟨N, hN⟩ := h_bounded
+    use N
+    intros φ h_phi_in
+    obtain ⟨n, h_n_le, h_phi_in_n⟩ := hN φ h_phi_in
+    exact delta_monotone h_n_le h_phi_in_n
+
+lemma max_is_maximal_consistent : ∀ {Γ : Set Formula},
+    IsConsistent Γ →
+    IsMaximalConsistent (max Γ) := by
+  intros Γ h_consistent
+  constructor
+  . intro h_inconsistent
+    obtain ⟨Δ, h_finite, h_sub, h_deriv⟩ := derivation_finite_support h_inconsistent
+    obtain ⟨n, h_sub_delta⟩ := finite_subset_in_some_delta h_finite h_sub
+    have h_delta_inconsistent : delta Γ n ⊢ ⊥' := weakening h_sub_delta h_deriv
+    have h_delta_consistent : IsConsistent (delta Γ n) :=
+      delta_preserves_consistency Γ n h_consistent
+    exact h_delta_consistent h_delta_inconsistent
+  . intros φ h_not_in h_consistent_with_phi
+    sorry
+
 lemma lindenbaum (Γ : Set Formula) :
     IsConsistent Γ →
     ∃ (Δ : MaximalConsistentSet), Γ ⊆ Δ.val := by
-  sorry
+  intros h_consistent
+  have h_max : IsMaximalConsistent (max Γ) := max_is_maximal_consistent h_consistent
+  exists ⟨max Γ, h_max⟩
+  exact max_extends
 
 end Lindenbaum
 

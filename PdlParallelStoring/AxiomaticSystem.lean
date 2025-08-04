@@ -16,8 +16,6 @@ inductive Axiom : Formula → Prop where
   | axiomK φ ψ : Axiom (φ → (ψ → φ))
   | axiomS φ ψ χ : Axiom ((φ → (ψ → χ)) → ((φ → ψ) → (φ → χ)))
   | conjIntro φ ψ : Axiom (φ → (ψ → (φ ∧ ψ)))
-  | conjElimLeft φ ψ : Axiom ((φ ∧ ψ) → φ)
-  | conjElimRight φ ψ : Axiom ((φ ∧ ψ) → ψ)
   | contradiction φ : Axiom ((φ ∧ (¬ φ)) → ⊥')
   -- Classical Logic Axiom
   | classicalReductio φ : Axiom (((¬ φ) → ⊥') → φ)
