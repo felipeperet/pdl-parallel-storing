@@ -2,6 +2,8 @@ import Mathlib.Logic.Relation
 
 import PdlParallelStoring.Syntax
 
+open Program
+
 ----------------------------------------------------------------------------------------------------
 -- PDL Semantics
 ----------------------------------------------------------------------------------------------------
@@ -12,7 +14,7 @@ import PdlParallelStoring.Syntax
 structure Frame where
   W : Type
   [nonempty : Nonempty W]
-  R : π → W → W → Prop
+  R : Program → W → W → Prop
 
 -- Def) A model is a pair M = (F, V)
 --      where:
@@ -20,17 +22,17 @@ structure Frame where
 --        - V : Φ → 2^W is a valuation function mapping atomic formulae into subsets of W.
 structure Model where
   F : Frame
-  V : Ψ → F.W → Prop
+  V : Literal → F.W → Prop
 
 -- Def) Satisfaction relation.
-def satisfies (M : Model) (w : M.F.W) : Φ → Prop
-  | Φ.false => False
-  | Φ.atomic ψ => M.V ψ w
-  | Φ.neg φ => ¬ satisfies M w φ
-  | Φ.conj φ₁ φ₂ => satisfies M w φ₁ ∧ satisfies M w φ₂
-  | Φ.diamond α φ => ∃ w', M.F.R α w w' ∧ satisfies M w' φ
+def satisfies (M : Model) (w : M.F.W) : Formula → Prop
+  | Formula.false => False
+  | Formula.atomic ψ => M.V ψ w
+  | Formula.neg φ => ¬ satisfies M w φ
+  | Formula.conj φ₁ φ₂ => satisfies M w φ₁ ∧ satisfies M w φ₂
+  | Formula.diamond α φ => ∃ w', M.F.R α w w' ∧ satisfies M w' φ
 
-notation:40 "(" κ "," s ") " " ⊨ " φ => satisfies κ s φ
+notation:40 "(" κ ", " s ") " " ⊨ " φ => satisfies κ s φ
 
 -- Def) A model is standard when it satisfies the following conditions:
 class Standard (M : Model) where
@@ -64,16 +66,16 @@ infixr:85 " ⋆ " => State.star
 --        - (S, {Rπ : π is a program}) is a frame.
 class Structured (F : Frame) where
   [S : State F.W]
-  respects_equiv : ∀ {π s₁ s₂}, F.R π s₁ s₂ → s₁ ≈ s₂
+  respects_equiv : ∀ {π s t}, F.R π s t → s ≈ t
 
 instance {F : Frame} [SF : Structured F] : State F.W := SF.S
 
 -- Def) A structured frame F is proper when it satisfies the following conditions:
 class Proper (F : Frame) extends Structured F where
-  s₁ : ∀ {s' t'}, F.R π.s₁ s' t' ↔ ∃ s t, (s' = s) ∧ t' = s ⋆ t
-  s₂ : ∀ {s' t'}, F.R π.s₂ s' t' ↔ ∃ s t, (s' = t) ∧ t' = s ⋆ t
-  r₁ : ∀ {s' t'}, F.R π.r₁ s' t' ↔ ∃ s t, (s' = s ⋆ t) ∧ t' = s
-  r₂ : ∀ {s' t'}, F.R π.r₂ s' t' ↔ ∃ s t, (s' = s ⋆ t) ∧ t' = t
+  s₁ : ∀ {s' t'}, F.R s₁ s' t' ↔ ∃ s t, (s' = s) ∧ t' = s ⋆ t
+  s₂ : ∀ {s' t'}, F.R s₂ s' t' ↔ ∃ s t, (s' = t) ∧ t' = s ⋆ t
+  r₁ : ∀ {s' t'}, F.R r₁ s' t' ↔ ∃ s t, (s' = s ⋆ t) ∧ t' = s
+  r₂ : ∀ {s' t'}, F.R r₂ s' t' ↔ ∃ s t, (s' = s ⋆ t) ∧ t' = t
   parallel : ∀ {π₁ π₂ s' t'}, F.R (π₁ ‖ π₂) s' t' ↔
     ∃ s₁ t₁ s₂ t₂, (s' = s₁ ⋆ t₁) ∧ (t' = s₂ ⋆ t₂) ∧
     F.R π₁ s₁ s₂ ∧ F.R π₂ t₁ t₂
@@ -83,27 +85,27 @@ class ProperStandard (M : Model) extends Standard M, Proper M.F
 
 -- Def) Global satisfaction.
 --      That is, the formula is satisfied in every possible state of a proper standard model.
-def globallySatisfies (M : Model) [ProperStandard M] (φ : Φ) :=
+def globallySatisfies (M : Model) [ProperStandard M] (φ : Formula) :=
   ∀ {w : M.F.W}, (M, w) ⊨ φ
 
 notation:40 M " ⊨ " φ => globallySatisfies M φ
 
 -- Def) Validity in a proper frame.
 --      That is, a formula is satisfied in every possible model of a proper frame.
-def validInProperFrame (F : Frame) [Proper F] (φ : Φ) : Prop :=
+def validInProperFrame (F : Frame) [Proper F] (φ : Formula) : Prop :=
   ∀ {M : Model} [ProperStandard M], (M.F = F) → M ⊨ φ
 
 notation:40 F " ⊨ " φ => validInProperFrame F φ
 
 -- Def) Global validity.
 --      That is, a formula is valid in every possible proper frame.
-def valid (φ : Φ) : Prop :=
+def valid (φ : Formula) : Prop :=
   ∀ {F : Frame} [Proper F], F ⊨ φ
 
-notation:40 " ⊨ " φ => valid φ
+notation:40 "⊨ " φ => valid φ
 
 -- Def) Semantic equivalence.
-def semEquiv (φ₁ φ₂ : Φ) : Prop :=
+def semEquiv (φ₁ φ₂ : Formula) : Prop :=
   ⊨ (φ₁ ↔ φ₂)
 
 infixl:50 " ≡ " => semEquiv
