@@ -177,7 +177,23 @@ def MaximalConsistentSet : Type :=
 lemma mcs_no_contradiction (Γ : MaximalConsistentSet) (φ : Formula) :
     (φ ∈ Γ.val) →
     (¬ φ) ∉ Γ.val := by
-  sorry
+  intros h_phi_in h_not_phi_in
+  simp only [MaximalConsistentSet, IsMaximalConsistent] at Γ
+  obtain ⟨h_consistent, h_turns_inconsistent⟩ := Γ.property
+  apply h_consistent
+  have h_derives_phi : Γ ⊢ φ := Deduction.premise Γ φ h_phi_in
+  have h_derives_not_phi : Γ ⊢ ¬ φ := Deduction.premise Γ (¬ φ) h_not_phi_in
+  have h_conj : Γ ⊢ (φ ∧ ¬ φ) := by
+    have h_conj_intro : Γ ⊢ (φ → (¬ φ) → (φ ∧ ¬ φ)) := by
+      apply Deduction.axiom'
+      apply Axiom.conjIntro
+    have h_step : Γ ⊢ (¬ φ) → (φ ∧ ¬ φ) :=
+      Deduction.modusPonens Γ φ ((¬ φ) → (φ ∧ ¬ φ)) h_derives_phi h_conj_intro
+    exact Deduction.modusPonens Γ (¬ φ) (φ ∧ ¬ φ) h_derives_not_phi h_step
+  have h_contra_intro : Γ ⊢ ((φ ∧ ¬ φ) → ⊥') := by
+    apply Deduction.axiom'
+    apply Axiom.contradiction
+  exact Deduction.modusPonens Γ (φ ∧ ¬ φ) ⊥' h_conj h_contra_intro
 
 namespace Lindenbaum
 
@@ -227,10 +243,11 @@ lemma insert_preserves_consistency (opt_φ : Option Formula) (Γ : Set Formula) 
       rewrite [insert]
       split_ifs with h
       . exact h
-      . have h_either := consistency_either Γ φ h_consistent
+      . have h_either : IsConsistent (Γ ∪ {φ}) ∨ IsConsistent (Γ ∪ {¬ φ}) :=
+          consistency_either Γ φ h_consistent
         cases h_either with
         | inl _ => contradiction
-        | inr hRight => exact hRight
+        | inr h_right => exact h_right
 
 lemma delta_preserves_consistency (Γ : Set Formula) (n : Nat) :
     IsConsistent Γ →
@@ -300,19 +317,20 @@ lemma insert_subset : ∀ {opt_φ : Option Formula} {Γ : Set Formula},
   | none =>
       simp only [insert]
       exact h_in
-  | some ψ =>
+  | some _ =>
       simp only [insert]
       split_ifs <;> (left; exact h_in)
 
 lemma delta_monotone : ∀ {Γ : Set Formula} {m n : Nat},
-    (m ≤ n) → (delta Γ m ⊆ delta Γ n) := by
+    (m ≤ n) →
+    (delta Γ m ⊆ delta Γ n) := by
   intros _ _ _ h_le
   induction h_le with
   | refl => rfl
   | step _ ih => exact subset_trans ih insert_subset
 
 lemma finite_subset_in_some_delta : ∀ {Γ : Set Formula} {Δ : Set Formula},
-    Set.Finite Δ →
+    Finite Δ →
     (Δ ⊆ max Γ) →
     ∃ n, Δ ⊆ delta Γ n := by
   intros Γ Δ h_finite h_sub
