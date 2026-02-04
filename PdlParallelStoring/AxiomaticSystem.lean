@@ -21,24 +21,32 @@ inductive Axiom : Formula → Prop where
   -- Classical Logic Axiom
   | classicalReductio φ : Axiom (((¬ φ) → ⊥') → φ)
   -- Modal Axioms
-  | modalComposition α β φ : Axiom (([α ; β] φ) ↔ ([α] [β] φ))
-  | modalChoice α β φ : Axiom (([α ∪ β] φ) ↔ (([α] φ) ∧ ([β] φ)))
+  -- Axiom 2
   | modalK α φ₁ φ₂ : Axiom (([α] (φ₁ → φ₂)) → (([α] φ₁) → ([α] φ₂)))
+  -- Axiom 3
+  | modalComposition α β φ : Axiom (([α ; β] φ) ↔ ([α] [β] φ))
+  -- Axiom 4
+  | modalChoice α β φ : Axiom (([α ∪ β] φ) ↔ (([α] φ) ∧ ([β] φ)))
   -- RSPDL₀ Specific Axioms
+  -- Axiom 5
   | functionalR₁ φ : Axiom ((⟨r₁⟩ φ) → ([r₁] φ))
   | functionalR₂ φ : Axiom ((⟨r₂⟩ φ) → ([r₂] φ))
+  -- Axiom 6
   | temporalForward φ : Axiom (φ → ([s₁] ⟨r₁⟩ φ))
-  | temporalBackward φ : Axiom (⟨s₁⟩ ⟨r₁⟩ φ → φ)
-  | s₁r₁Converse φ : Axiom ((⟨s₁⟩ φ) → (⟨r₁⟩ φ))
-  | r₁s₁Converse φ : Axiom ((⟨r₁⟩ φ) → (⟨s₁⟩ φ))
+  | temporalBackward φ : Axiom (φ → ([r₁] ⟨s₁⟩ φ))
   | temporalForward₂ φ : Axiom (φ → ([s₂] ⟨r₂⟩ φ))
-  | temporalBackward₂ φ : Axiom (⟨s₂⟩ ⟨r₂⟩ φ → φ)
-  | s₂r₂Converse φ : Axiom ((⟨s₂⟩ φ) → (⟨r₂⟩ φ))
-  | r₂s₂Converse φ : Axiom (⟨r₂⟩ φ → (⟨s₂⟩ φ))
+  | temporalBackward₂ φ : Axiom (φ → ([r₂] ⟨s₂⟩ φ))
+  -- Axiom 7
   | sameDomain : Axiom ((⟨r₁⟩ ⊤') ↔ (⟨r₂⟩ ⊤'))
+  | sameDomain₂ : Axiom ((⟨s₁⟩ ⊤') ↔ (⟨s₂⟩ ⊤'))
+  -- Axiom 8
   | unicity φ : Axiom ((⟨s₁ ; r₁⟩ φ) ↔ ([s₁ ; r₁] φ))
+  | unicity₂ φ : Axiom ((⟨s₂ ; r₂⟩ φ) ↔ ([s₂ ; r₂] φ))
+  -- Axiom 9
   | storeRestoreId φ : Axiom (([s₁ ; r₂] φ) → φ)
+  -- Axiom 10
   | storeRestoreDiamond φ : Axiom (φ → ([s₁ ; r₂] ⟨s₁ ; r₂⟩ φ))
+  -- Axiom 11
   | storeRestoreIterate φ : Axiom (([s₁ ; r₂] φ) → ([s₁ ; r₂] [s₁ ; r₂] φ))
 
 -- Deduction system with context.

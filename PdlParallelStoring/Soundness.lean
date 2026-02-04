@@ -97,6 +97,24 @@ lemma soundness_functional_r₁ (φ : Formula) :
   rewrite [s'Eq] at hNotSat
   exact hNotSat hSat
 
+lemma soundness_functional_r₂ (φ : Formula) :
+    ⊨ (⟨r₂⟩ φ) → ([r₂] φ) := by
+  intros _ P M _ hEq w hSat
+  subst hEq
+  simp only [satisfies, Decidable.not_not] at hSat
+  obtain ⟨h₁, h₂⟩ := hSat
+  obtain ⟨s, hRws, hSat⟩ := h₁
+  rewrite [P.r₂] at hRws
+  obtain ⟨s₁, s₂, hEq₁, hEq₂⟩ := hRws
+  obtain ⟨s', hRws', hNotSat⟩ := h₂
+  rewrite [P.r₂] at hRws'
+  obtain ⟨s₁', s₂', hEq₁', hEq₂'⟩ := hRws'
+  have hSame : s₁ ⋆ s₂ = s₁'⋆ s₂' := by rw [← hEq₁, hEq₁']
+  have ⟨hs₁Eq, hs₂Eq⟩ := State.inject.mp hSame
+  have s'Eq : s' = s := by rw [hEq₂', ← hs₂Eq, ← hEq₂]
+  rewrite [s'Eq] at hNotSat
+  exact hNotSat hSat
+
 lemma soundness_temporal_forward (φ : Formula) :
     ⊨ φ → ([s₁] ⟨r₁⟩ φ) := by
   intros _ P M _ hEq w hSat
@@ -244,9 +262,15 @@ theorem soundness_general :
       | modalChoice => apply soundness_choice
       | modalK => apply soundness_k
       | functionalR₁ => apply soundness_functional_r₁
+      | functionalR₂ => apply soundness_functional_r₂
       | temporalForward => apply soundness_temporal_forward
-      | sameDomain => apply soundness_same_domain
+      | temporalBackward => sorry
+      | temporalForward₂ => sorry
+      | temporalBackward₂ => sorry
+      | sameDomain => sorry
+      | sameDomain₂ => sorry
       | unicity => apply soundness_unicity
+      | unicity₂ => sorry
       | storeRestoreId => apply soundness_store_restore_id
       | storeRestoreDiamond => apply soundness_store_restore_diamond
       | storeRestoreIterate => apply soundness_store_restore_iterate

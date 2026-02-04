@@ -56,7 +56,7 @@ lemma mcs_no_contradiction (Γ : MaximalConsistentSet) (φ : Formula) :
     (¬ φ) ∉ Γ.val := by
   intros h_phi_in h_not_phi_in
   simp only [MaximalConsistentSet] at Γ
-  obtain ⟨h_consistent, h_turns_inconsistent⟩ := Γ.property
+  obtain ⟨h_consistent, _⟩ := Γ.property
   apply h_consistent
   have h_derives_phi : Γ ⊢ φ := Deduction.premise Γ φ h_phi_in
   have h_derives_not_phi : Γ ⊢ ¬ φ := Deduction.premise Γ (¬ φ) h_not_phi_in
@@ -225,7 +225,7 @@ lemma finite_subset_in_some_delta : ∀ {Γ : Set Formula} {Δ : Set Formula},
         intro t
         induction t using Finset.induction with
         | empty =>
-            intro _
+            intros
             use 0
             intros _ h_in
             simp only [Finset.coe_empty, Set.mem_empty_iff_false] at h_in
@@ -274,7 +274,41 @@ lemma max_is_maximal_consistent : ∀ {Γ : Set Formula},
       delta_preserves_consistency Γ n h_consistent
     exact h_delta_consistent h_delta_inconsistent
   . intros φ h_not_in h_consistent_with_phi
-    sorry
+    have ⟨n, h_decode⟩ : ∃ n, decode n = some φ := by
+      use encode φ
+      exact countable
+    have h_delta_succ : delta Γ (n + 1) = insert (some φ) (delta Γ n) := by rw [delta, h_decode]
+    rw [insert] at h_delta_succ
+    split_ifs at h_delta_succ with h_cons
+    . have h_in_delta : φ ∈ delta Γ (n + 1) := by
+        simp only [h_delta_succ, Set.union_singleton, Set.mem_insert_iff, true_or]
+      have h_in : φ ∈ max Γ := by
+        simp only [max, Set.mem_iUnion]
+        exists n + 1
+      apply h_not_in h_in
+    . have h_delta_sub_max : delta Γ n ⊆ max Γ := by
+        simp only [Set.subset_def]
+        intros ψ ψ_in
+        simp only [max, Set.mem_iUnion]
+        exists n
+      have h_delta_derives_false : delta Γ n ∪ {φ} ⊢ ⊥' := by
+        simp only [IsConsistent, Set.insert_eq, not_not] at h_cons
+        exact h_cons
+      have h_max_derives_false : max Γ ∪ {φ} ⊢ ⊥' := by
+        apply weakening (Γ := delta Γ n ∪ {φ})
+        . simp only [Set.subset_def]
+          intros ψ ψ_in
+          simp only [max, Set.mem_union, Set.mem_singleton_iff] at ψ_in ⊢
+          cases ψ_in with
+          | inl ψ_in₂ =>
+              left
+              simp only [Set.mem_iUnion]
+              exists n
+          | inr ψ_eq =>
+              right
+              exact ψ_eq
+        . exact h_delta_derives_false
+      exact h_consistent_with_phi h_max_derives_false
 
 lemma lindenbaum (Γ : Set Formula) :
     IsConsistent Γ →
@@ -289,37 +323,19 @@ open Lindenbaum
 
 namespace CanonicalModel
 
-def canonicalRelation (α : Program) (Γ Δ : MaximalConsistentSet) : Prop :=
-  ∀ {φ}, (([α] φ) ∈ Γ.val) → φ ∈ Δ.val
+def generatedSubmodel (Γ : MaximalConsistentSet) : Model := sorry
 
-def canonicalFrame : Frame where
-  W := MaximalConsistentSet
-  R := canonicalRelation
-  nonempty := sorry
+def gamma_is_world (Γ : MaximalConsistentSet) :
+  (generatedSubmodel Γ).F.W := sorry
 
-def canonicalValuation (lit : Literal) (Γ : MaximalConsistentSet) : Prop :=
-  (Formula.atomic lit) ∈ Γ.val
-
-def canonicalModel : Model where
-  F := canonicalFrame
-  V := canonicalValuation
-
-lemma truth_lemma : ∀ {φ : Formula} {Γ : canonicalModel.F.W},
-    ((canonicalModel, Γ) ⊨ φ) ↔ φ ∈ Γ.val := by
-  sorry
-
-instance canonicalProper : Proper canonicalFrame := by
-  sorry
-
-instance canonicalStandard : Standard canonicalModel := by
-  sorry
-
-instance : ProperStandard canonicalModel where
-  toStandard := canonicalStandard
-  toProper := canonicalProper
+lemma submodel_truth_at_gamma (Γ : MaximalConsistentSet) (φ : Formula) :
+    ((generatedSubmodel Γ, gamma_is_world Γ) ⊨ φ) ↔ φ ∈ Γ.val := sorry
 
 end CanonicalModel
 open CanonicalModel
+
+instance generatedSubmodelProperStandard (Γ : MaximalConsistentSet) :
+    ProperStandard (generatedSubmodel Γ) := sorry
 
 lemma contrapositive_completeness :
     ∀ {φ : Formula}, (¬ ⊢ φ) →
@@ -334,13 +350,11 @@ lemma contrapositive_completeness :
     by_contra h_in
     have h_not_in : (¬ φ) ∉ Γ.val := mcs_no_contradiction Γ φ h_in
     exact h_not_in h₃
-  have h₅ : ¬ ((canonicalModel, Γ) ⊨ φ) := by
-    rewrite [truth_lemma]
-    exact h₄
-  use canonicalModel, inferInstance
+  use generatedSubmodel Γ, generatedSubmodelProperStandard Γ
   intro h_global_sat
-  have h_sat : (canonicalModel, Γ) ⊨ φ := h_global_sat
-  exact h₅ h_sat
+  have h_sat : (generatedSubmodel Γ, gamma_is_world Γ) ⊨ φ := h_global_sat
+  rw [submodel_truth_at_gamma] at h_sat
+  exact h₄ h_sat
 
 theorem completeness : ∀ {φ : Formula},
     (⊨ φ) →
