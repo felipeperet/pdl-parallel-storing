@@ -6,7 +6,7 @@ abbrev Literal := String
 mutual
   inductive Formula where
     | false : Formula
-    | atomic : Literal → Formula
+    | atom : Literal → Formula
     | neg : Formula → Formula
     | conj : Formula → Formula → Formula
     | diamond : Program → Formula → Formula

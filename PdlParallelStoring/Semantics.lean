@@ -27,7 +27,7 @@ structure Model where
 -- Def) Satisfaction relation.
 def satisfies (M : Model) (w : M.F.W) : Formula → Prop
   | Formula.false => False
-  | Formula.atomic ψ => M.V ψ w
+  | Formula.atom ψ => M.V ψ w
   | Formula.neg φ => ¬ satisfies M w φ
   | Formula.conj φ₁ φ₂ => satisfies M w φ₁ ∧ satisfies M w φ₂
   | Formula.diamond α φ => ∃ w', M.F.R α w w' ∧ satisfies M w' φ

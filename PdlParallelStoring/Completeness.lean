@@ -1,8 +1,11 @@
 import Mathlib.Data.Finset.Max
 import Mathlib.Data.Set.Finite.Basic
 
-import PdlParallelStoring.AxiomaticSystem
+import PdlParallelStoring.Syntax
 import PdlParallelStoring.Semantics
+import PdlParallelStoring.AxiomaticSystem
+
+open Program
 
 open Classical
 
@@ -71,6 +74,15 @@ lemma mcs_no_contradiction (Γ : MaximalConsistentSet) (φ : Formula) :
     apply Deduction.axiom'
     apply Axiom.contradiction
   exact Deduction.modusPonens Γ (φ ∧ ¬ φ) ⊥' h_conj h_contra_intro
+
+lemma mcs_is_closed (Γ : MaximalConsistentSet) (φ : Formula) : (Γ.val ⊢ φ) → φ ∈ Γ.val := by
+  intros h_deriv
+  by_contra h_not_in
+  obtain ⟨h_cons, h_max⟩ := Γ.property
+  have h_phi_incons : ¬ IsConsistent (Γ.val ∪ {φ}) := h_max h_not_in
+  simp only [IsConsistent, not_not] at h_phi_incons
+  have h_cut : Γ.val ⊢ ⊥' := cut_admissibility h_deriv h_phi_incons
+  exact h_cons h_cut
 
 namespace Lindenbaum
 
@@ -323,19 +335,85 @@ open Lindenbaum
 
 namespace CanonicalModel
 
-def generatedSubmodel (Γ : MaximalConsistentSet) : Model := sorry
+def canonicalRelation (α : Program) (Γ Δ : MaximalConsistentSet) : Prop :=
+  ∀ {φ}, (([α] φ) ∈ Γ.val) → φ ∈ Δ.val
 
-def gamma_is_world (Γ : MaximalConsistentSet) :
-  (generatedSubmodel Γ).F.W := sorry
+def canonicalFrame : Frame where
+  W := MaximalConsistentSet
+  R := canonicalRelation
+  nonempty := sorry
+
+def canonicalValuation (lit : Literal) (Γ : MaximalConsistentSet) : Prop :=
+  (Formula.atom lit) ∈ Γ.val
+
+def canonicalModel : Model where
+  F := canonicalFrame
+  V := canonicalValuation
+
+instance canonicalStandard : Standard canonicalModel := sorry
+
+lemma existence_lemma (Γ : MaximalConsistentSet) (α : Program) (φ : Formula) :
+    ((⟨α⟩ φ) ∈ Γ.val) →
+    ∃ (Δ : MaximalConsistentSet), canonicalRelation α Γ Δ ∧ φ ∈ Δ.val := by
+  intro h_in
+  let Γ_α : Set Formula := {ψ | ([α]ψ) ∈ Γ.val}
+  have h_cons : IsConsistent (Γ_α ∪ {φ}) := by
+    intro h_incons
+    obtain ⟨Δ, h_fin, h_sub, h_deriv⟩ := derivation_finite_support h_incons
+    sorry
+  obtain ⟨Δ, h_ext⟩ := Lindenbaum.lindenbaum (Γ_α ∪ {φ}) h_cons
+  exact
+    ⟨Δ
+    , λ h_box => h_ext (Set.mem_union_left _ h_box)
+    , h_ext (Set.mem_union_right _ rfl)
+    ⟩
+
+lemma truth_lemma : ∀ {φ : Formula} {Γ : canonicalModel.F.W},
+    ((canonicalModel, Γ) ⊨ φ) ↔ φ ∈ Γ.val := by
+  intro φ Γ
+  induction φ using Formula.rec (motive_2 := λ _ => True) with
+  | false => sorry
+  | atom p => sorry
+  | neg φ ih => sorry
+  | conj φ ψ ih_φ ih_ψ => sorry
+  | diamond α φ ih => sorry
+  | atomic p => trivial
+  | comp α β ih_α ih_β => trivial
+  | choice α β ih_α ih_β => trivial
+  | iter α ih => trivial
+  | parallel α β ih_α ih_β => trivial
+  | test φ ih => trivial
+  | s₁ => trivial
+  | s₂ => trivial
+  | r₁ => trivial
+  | r₂ => trivial
+
+def reachableWorlds (Γ : MaximalConsistentSet) : Set MaximalConsistentSet :=
+  {Δ | ∃ Ω, canonicalRelation r₁ Ω Γ ∧ canonicalRelation r₂ Ω Δ}
+
+lemma gamma_in_reachable (Γ : MaximalConsistentSet) : Γ ∈ reachableWorlds Γ := by
+  simp only [reachableWorlds, Set.mem_setOf_eq]
+  sorry
+
+def generatedSubmodel (Γ : MaximalConsistentSet) : Model where
+  F := {
+    W := reachableWorlds Γ
+    R := λ α ⟨Δ, _⟩  ⟨Δ', _⟩ => canonicalRelation α Δ Δ'
+    nonempty := ⟨Γ, gamma_in_reachable Γ⟩
+  }
+  V := λ lit ⟨Δ, _⟩ => canonicalValuation lit Δ
+
+def gamma_is_world (Γ : MaximalConsistentSet) : (generatedSubmodel Γ).F.W :=
+  ⟨Γ, gamma_in_reachable Γ⟩
+
+instance generatedSubmodelProperStandard (Γ : MaximalConsistentSet) :
+    ProperStandard (generatedSubmodel Γ) := sorry
 
 lemma submodel_truth_at_gamma (Γ : MaximalConsistentSet) (φ : Formula) :
     ((generatedSubmodel Γ, gamma_is_world Γ) ⊨ φ) ↔ φ ∈ Γ.val := sorry
 
 end CanonicalModel
 open CanonicalModel
-
-instance generatedSubmodelProperStandard (Γ : MaximalConsistentSet) :
-    ProperStandard (generatedSubmodel Γ) := sorry
 
 lemma contrapositive_completeness :
     ∀ {φ : Formula}, (¬ ⊢ φ) →
