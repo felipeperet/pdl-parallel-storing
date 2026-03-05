@@ -187,3 +187,104 @@ theorem cut_admissibility : ∀ {Γ : Set Formula} {φ ψ : Formula},
     Γ ⊢ ψ := by
   intros _ _ _ h₁ h₂
   exact cut_admissibility_general h₂ rfl h₁
+
+----------------------------------------------------------------------------------------------------
+--- Laws of the system
+----------------------------------------------------------------------------------------------------
+
+lemma iff_mp {Γ : Set Formula} {φ ψ : Formula} :
+    (Γ ⊢ (φ ↔ ψ)) → (Γ ⊢ (φ → ψ)) := by
+  intro h
+  exact Deduction.modusPonens Γ (φ ↔ ψ) (φ → ψ) h
+    (Deduction.axiom' Γ ((φ ↔ ψ) → (φ → ψ)) (Axiom.conjElimL (φ → ψ) (ψ → φ)))
+
+lemma iff_mpr {Γ : Set Formula} {φ ψ : Formula} :
+    (Γ ⊢ (φ ↔ ψ)) → (Γ ⊢ (ψ → φ)) := by
+  intro h
+  exact Deduction.modusPonens Γ (φ ↔ ψ) (ψ → φ) h
+    (Deduction.axiom' Γ ((φ ↔ ψ) → (ψ → φ)) (Axiom.conjElimR (φ → ψ) (ψ → φ)))
+
+lemma double_neg_elim (φ : Formula) : ⊢ (((¬ (¬ φ)) → φ)) := by
+  apply deduction_theorem
+  apply Deduction.modusPonens (∅ ∪ {¬ ¬ φ}) ((¬ φ) → ⊥')
+  · apply deduction_theorem
+    apply Deduction.modusPonens ((∅ ∪ {¬ ¬ φ}) ∪ {¬ φ}) ((¬ φ) ∧ ¬ ¬ φ)
+    · apply Deduction.modusPonens ((∅ ∪ {¬ ¬ φ}) ∪ {¬ φ}) (¬ ¬ φ)
+      · exact Deduction.premise ((∅ ∪ {¬ ¬ φ}) ∪ {¬ φ}) (¬ ¬ φ) (by simp)
+      · apply Deduction.modusPonens ((∅ ∪ {¬ ¬ φ}) ∪ {¬ φ}) (¬ φ)
+        · exact Deduction.premise ((∅ ∪ {¬ ¬ φ}) ∪ {¬ φ}) (¬ φ) (by simp)
+        · apply Deduction.axiom'
+          exact Axiom.conjIntro (¬ φ) (¬ ¬ φ)
+    · apply Deduction.axiom'
+      exact Axiom.contradiction (¬ φ)
+  · apply Deduction.axiom'
+    exact Axiom.classicalReductio φ
+
+lemma contrapositive {Γ : Set Formula} {φ ψ : Formula} :
+    (Γ ⊢ (φ → ψ)) → (Γ ⊢ (( ¬ ψ) → (¬ φ))) := by
+  intro h_deriv
+  apply deduction_theorem
+  show Γ ∪ {¬ ψ} ⊢ ¬ φ
+  apply Deduction.modusPonens (Γ ∪ {¬ ψ}) ((¬ (¬ φ)) → ⊥')
+  · apply deduction_theorem
+    show (Γ ∪ {¬ ψ}) ∪ {¬ ¬ φ} ⊢ ⊥'
+    have h_φ : (Γ ∪ {¬ ψ}) ∪ {¬ ¬ φ} ⊢ φ := by
+      apply Deduction.modusPonens ((Γ ∪ {¬ ψ}) ∪ {¬ ¬ φ}) (¬ ¬ φ) φ
+      · exact Deduction.premise
+          ((Γ ∪ {¬ ψ}) ∪ {¬ ¬ φ})
+          (¬ ¬ φ)
+          (Set.mem_union_right (Γ ∪ {¬ ψ}) (Set.mem_singleton (¬ ¬ φ)))
+      · apply weakening (show ∅ ⊆ (Γ ∪ {¬ ψ}) ∪ {¬ ¬ φ} by simp)
+        exact double_neg_elim φ
+    have h_ψ : (Γ ∪ {¬ ψ}) ∪ {¬ ¬ φ} ⊢ ψ := by
+      apply Deduction.modusPonens ((Γ ∪ {¬ ψ}) ∪ {¬ ¬ φ}) φ ψ
+      · exact h_φ
+      · apply weakening (show Γ ⊆ (Γ ∪ {¬ ψ}) ∪ {¬ ¬ φ} from
+          Set.subset_union_of_subset_left (Set.subset_union_left) _)
+        exact h_deriv
+    apply Deduction.modusPonens ((Γ ∪ {¬ ψ}) ∪ {¬ ¬ φ}) (ψ ∧ ¬ ψ)
+    · apply Deduction.modusPonens ((Γ ∪ {¬ ψ}) ∪ {¬ ¬ φ}) (¬ ψ)
+      · exact Deduction.premise ((Γ ∪ {¬ ψ}) ∪ {¬ ¬ φ}) (¬ ψ) (by simp)
+      · apply Deduction.modusPonens ((Γ ∪ {¬ ψ}) ∪ {¬ ¬ φ}) ψ
+        · exact h_ψ
+        · apply Deduction.axiom'
+          apply Axiom.conjIntro
+    · apply Deduction.axiom'
+      apply Axiom.contradiction
+  · apply Deduction.axiom'
+    apply Axiom.classicalReductio
+
+lemma diamond_monotonicity (α : Program) {φ ψ : Formula} :
+    (⊢ (φ → ψ)) → (⊢ ((⟨α⟩ φ) → (⟨α⟩ ψ))) := by
+  intros h_deriv
+  apply deduction_theorem
+  simp only [Set.union_singleton, insert_empty_eq]
+  have h_dual_φ : {⟨α⟩ φ} ⊢ (⟨α⟩ φ) ↔ ¬ ([α] ¬ φ) :=
+    Deduction.axiom' {⟨α⟩ φ} ((⟨α⟩ φ) ↔ ¬ ([α] ¬ φ)) (Axiom.duality α φ)
+  have h_to_box_φ : {⟨α⟩ φ} ⊢ ((⟨α⟩ φ) → ¬ ([α] ¬ φ)) :=
+    iff_mp h_dual_φ
+  have h_prem_φ : {⟨α⟩ φ} ⊢ (⟨α⟩ φ) :=
+    Deduction.premise {⟨α⟩ φ} (⟨α⟩ φ) (Set.mem_singleton (⟨α⟩ φ))
+  have h_neg_box_φ : {⟨α⟩ φ} ⊢ ¬ ([α] ¬ φ) :=
+    Deduction.modusPonens {⟨α⟩ φ} (⟨α⟩ φ) (¬ ([α] ¬ φ)) h_prem_φ h_to_box_φ
+  have h_nec : {⟨α⟩ φ} ⊢ [α] ((¬ ψ) → ¬ φ) :=
+    Deduction.necessitation {⟨α⟩ φ} α ((¬ ψ) → ¬ φ) (contrapositive h_deriv)
+  have h_modalK_ax : {⟨α⟩ φ} ⊢ ([α] ((¬ ψ) → ¬ φ)) → (([α] (¬ ψ)) → ([α] (¬ φ))) :=
+    Deduction.axiom'
+      {⟨α⟩ φ}
+      (([α] ((¬ ψ) → ¬ φ)) → (([α] (¬ ψ)) → ([α] (¬ φ))))
+      (Axiom.modalK α (¬ ψ) (¬ φ))
+  have h_modalK : {⟨α⟩ φ} ⊢ (([α] (¬ ψ)) → ([α] (¬ φ))) :=
+    Deduction.modusPonens {⟨α⟩ φ} ([α] ((¬ ψ) → ¬ φ)) (([α] (¬ ψ)) → ([α] (¬ φ))) h_nec h_modalK_ax
+  have h_neg_box_ψ : {⟨α⟩ φ} ⊢ ¬ ([α] ¬ ψ) :=
+    Deduction.modusPonens {⟨α⟩ φ} (¬ ([α] ¬ φ)) (¬ ([α] ¬ ψ)) h_neg_box_φ (contrapositive h_modalK)
+  have h_dual_ψ : {⟨α⟩ φ} ⊢ (⟨α⟩ ψ) ↔ ¬ ([α] ¬ ψ) :=
+    Deduction.axiom' {⟨α⟩ φ} ((⟨α⟩ ψ) ↔ ¬ ([α] ¬ ψ)) (Axiom.duality α ψ)
+  have h_from_box_ψ : {⟨α⟩ φ} ⊢ ((¬ ([α] ¬ ψ)) → (⟨α⟩ ψ)) :=
+    iff_mpr h_dual_ψ
+  exact Deduction.modusPonens {⟨α⟩ φ} (¬ ([α] ¬ ψ)) (⟨α⟩ ψ) h_neg_box_ψ h_from_box_ψ
+
+lemma neg_diamond_to_box_neg (α : Program) (φ : Formula) :
+    ⊢ ((¬ (⟨α⟩ φ)) → ([α] ¬ φ)) := by
+  simp [box]
+  exact contrapositive (diamond_monotonicity α (double_neg_elim φ))
