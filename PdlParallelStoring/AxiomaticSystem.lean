@@ -17,10 +17,13 @@ inductive Axiom : Formula → Prop where
   | axiomK φ ψ : Axiom (φ → (ψ → φ))
   | axiomS φ ψ χ : Axiom ((φ → (ψ → χ)) → ((φ → ψ) → (φ → χ)))
   | conjIntro φ ψ : Axiom (φ → (ψ → (φ ∧ ψ)))
+  | conjElimL φ ψ : Axiom ((φ ∧ ψ) → φ)
+  | conjElimR φ ψ : Axiom ((φ ∧ ψ) → ψ)
   | contradiction φ : Axiom ((φ ∧ (¬ φ)) → ⊥')
   -- Classical Logic Axiom
   | classicalReductio φ : Axiom (((¬ φ) → ⊥') → φ)
   -- Modal Axioms
+  | duality α φ : Axiom ((⟨α⟩ φ) ↔ ¬ ([α] ¬ φ))
   -- Axiom 2
   | modalK α φ₁ φ₂ : Axiom (([α] (φ₁ → φ₂)) → (([α] φ₁) → ([α] φ₂)))
   -- Axiom 3
