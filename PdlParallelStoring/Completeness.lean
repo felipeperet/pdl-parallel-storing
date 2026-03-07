@@ -54,10 +54,10 @@ lemma deduction_consistency : ∀ {φ : Formula},
 def MaximalConsistentSet : Type :=
   {Γ : Set Formula // IsMaximalConsistent Γ}
 
-lemma mcs_no_contradiction (Γ : MaximalConsistentSet) (φ : Formula) :
+lemma mcs_no_contradiction : ∀ {Γ : MaximalConsistentSet} {φ : Formula},
     (φ ∈ Γ.val) →
     (¬ φ) ∉ Γ.val := by
-  intros h_phi_in h_not_phi_in
+  intros Γ φ h_phi_in h_not_phi_in
   simp only [MaximalConsistentSet] at Γ
   obtain ⟨h_consistent, _⟩ := Γ.property
   apply h_consistent
@@ -75,8 +75,44 @@ lemma mcs_no_contradiction (Γ : MaximalConsistentSet) (φ : Formula) :
     apply Axiom.contradiction
   exact Deduction.modusPonens Γ (φ ∧ ¬ φ) ⊥' h_conj h_contra_intro
 
-lemma mcs_is_closed (Γ : MaximalConsistentSet) (φ : Formula) : (Γ.val ⊢ φ) → φ ∈ Γ.val := by
-  intros h_deriv
+lemma consistency_either : ∀ {Γ : Set Formula} {φ : Formula},
+    IsConsistent Γ →
+    IsConsistent (Γ ∪ {φ}) ∨ IsConsistent (Γ ∪ {¬ φ}) := by
+  intros Γ φ h_consistent
+  by_contra h
+  have h₁ : (¬ IsConsistent (Γ ∪ {φ})) ∧ ¬ IsConsistent (Γ ∪ {¬ φ}) := by
+    constructor
+    . intros h_union_consistent
+      apply h
+      left
+      exact h_union_consistent
+    . intros h_union_consistent
+      apply h
+      right
+      exact h_union_consistent
+  obtain ⟨h₁₁, h₁₂⟩ := h₁
+  rewrite [← deduction_consistency_aux] at h₁₂
+  apply h₁₁
+  intros h₂
+  apply h_consistent
+  exact cut_admissibility h₁₂ h₂
+
+lemma mcs_complete : ∀ {Γ : MaximalConsistentSet} {φ : Formula},
+    (φ ∉ Γ.val) →
+    (¬ φ) ∈ Γ.val := by
+  intros Γ φ h_phi_nin
+  obtain ⟨h_cons, h_max⟩ := Γ.property
+  by_contra h_neg_phi_nin
+  have h_incons_phi : ¬ IsConsistent (Γ.val ∪ {φ}) := h_max h_phi_nin
+  have h_incons_neg_phi : ¬ IsConsistent (Γ.val ∪ {¬ φ}) := h_max h_neg_phi_nin
+  cases consistency_either h_cons with
+  | inl h => exact h_incons_phi h
+  | inr h => exact h_incons_neg_phi h
+
+lemma mcs_is_closed : ∀ {Γ : MaximalConsistentSet} {φ : Formula},
+    (Γ.val ⊢ φ) →
+    φ ∈ Γ.val := by
+  intros Γ φ h_deriv
   by_contra h_not_in
   obtain ⟨h_cons, h_max⟩ := Γ.property
   have h_phi_incons : ¬ IsConsistent (Γ.val ∪ {φ}) := h_max h_not_in
@@ -100,32 +136,10 @@ def delta (Γ : Set Formula) : Nat → Set Formula
 def max (Γ : Set Formula) : Set Formula :=
   ⋃ n, delta Γ n
 
-lemma consistency_either (Γ : Set Formula) (φ : Formula) :
-    IsConsistent Γ →
-    IsConsistent (Γ ∪ {φ}) ∨ IsConsistent (Γ ∪ {¬ φ}) := by
-  intros h_consistent
-  by_contra h
-  have h₁ : (¬ IsConsistent (Γ ∪ {φ})) ∧ ¬ IsConsistent (Γ ∪ {¬ φ}) := by
-    constructor
-    . intros h_union_consistent
-      apply h
-      left
-      exact h_union_consistent
-    . intros h_union_consistent
-      apply h
-      right
-      exact h_union_consistent
-  obtain ⟨h₁₁, h₁₂⟩ := h₁
-  rewrite [← deduction_consistency_aux] at h₁₂
-  apply h₁₁
-  intros h₂
-  apply h_consistent
-  exact cut_admissibility h₁₂ h₂
-
-lemma insert_preserves_consistency (opt_φ : Option Formula) (Γ : Set Formula) :
+lemma insert_preserves_consistency : ∀ {opt_φ : Option Formula} {Γ : Set Formula},
     IsConsistent Γ →
     IsConsistent (insert opt_φ Γ) := by
-  intros h_consistent
+  intros opt_φ Γ h_consistent
   cases opt_φ with
   | none => exact h_consistent
   | some φ =>
@@ -133,15 +147,15 @@ lemma insert_preserves_consistency (opt_φ : Option Formula) (Γ : Set Formula) 
       split_ifs with h
       . exact h
       . have h_either : IsConsistent (Γ ∪ {φ}) ∨ IsConsistent (Γ ∪ {¬ φ}) :=
-          consistency_either Γ φ h_consistent
+          consistency_either h_consistent
         cases h_either with
         | inl _ => contradiction
         | inr h_right => exact h_right
 
-lemma delta_preserves_consistency (Γ : Set Formula) (n : Nat) :
+lemma delta_preserves_consistency : ∀ {Γ : Set Formula} {n : Nat},
     IsConsistent Γ →
     IsConsistent (delta Γ n) := by
-  intros h_consistent
+  intros Γ n h_consistent
   induction n with
   | zero => exact h_consistent
   | succ n ih =>
@@ -155,8 +169,8 @@ lemma max_extends : ∀ {Γ : Set Formula}, Γ ⊆ max Γ := by
   rewrite [delta]
   exact h_in
 
-lemma derivation_finite_support :
-    ∀ {Γ : Set Formula} {φ : Formula}, (Γ ⊢ φ) →
+lemma derivation_finite_support : ∀ {Γ : Set Formula} {φ : Formula},
+    (Γ ⊢ φ) →
     ∃ (Δ : Set Formula), Finite Δ ∧ (Δ ⊆ Γ) ∧ (Δ ⊢ φ) := by
   intros _ _ h_deriv
   induction h_deriv with
@@ -283,7 +297,7 @@ lemma max_is_maximal_consistent : ∀ {Γ : Set Formula},
     obtain ⟨n, h_sub_delta⟩ := finite_subset_in_some_delta h_finite h_sub
     have h_delta_inconsistent : delta Γ n ⊢ ⊥' := weakening h_sub_delta h_deriv
     have h_delta_consistent : IsConsistent (delta Γ n) :=
-      delta_preserves_consistency Γ n h_consistent
+      delta_preserves_consistency h_consistent
     exact h_delta_consistent h_delta_inconsistent
   . intros φ h_not_in h_consistent_with_phi
     have ⟨n, h_decode⟩ : ∃ n, decode n = some φ := by
@@ -322,10 +336,10 @@ lemma max_is_maximal_consistent : ∀ {Γ : Set Formula},
         . exact h_delta_derives_false
       exact h_consistent_with_phi h_max_derives_false
 
-lemma lindenbaum (Γ : Set Formula) :
+lemma lindenbaum : ∀ {Γ : Set Formula},
     IsConsistent Γ →
     ∃ (Δ : MaximalConsistentSet), Γ ⊆ Δ.val := by
-  intros h_consistent
+  intros Γ h_consistent
   have h_max : IsMaximalConsistent (max Γ) := max_is_maximal_consistent h_consistent
   exists ⟨max Γ, h_max⟩
   exact max_extends
@@ -352,31 +366,161 @@ def canonicalModel : Model where
 
 instance canonicalStandard : Standard canonicalModel := sorry
 
-lemma existence_lemma (Γ : MaximalConsistentSet) (α : Program) (φ : Formula) :
+lemma box_of_derivation :
+    ∀ {Γ : MaximalConsistentSet} {α : Program} {Δ : Set Formula} {φ : Formula},
+    (Δ ⊢ φ) →
+    (∀ ψ ∈ Δ, ([α] ψ) ∈ Γ.val) →
+    Γ.val ⊢ ([α] φ) := by
+  intros Γ α Δ φ h_deriv h_box
+  induction h_deriv with
+  | premise Ω ψ h_mem =>
+      exact Deduction.premise Γ.val ([α] ψ) (h_box ψ h_mem)
+  | axiom' Γ.val ψ h_ax =>
+      exact weakening (Set.empty_subset _)
+        (Deduction.necessitation ∅ α ψ (Deduction.axiom' ∅ ψ h_ax))
+  | modusPonens Ω ψ χ h₁ h₂ ih₁ ih₂ =>
+      have h_K : Γ.val ⊢ ([α] ψ → χ) → ([α] ψ) → ([α] χ) :=
+        Deduction.axiom' Γ.val (([α] ψ → χ) → ([α] ψ) → ([α] χ)) (Axiom.modalK α ψ χ)
+      exact Deduction.modusPonens Γ.val _ _ (ih₁ h_box)
+        (Deduction.modusPonens Γ.val _ _ (ih₂ h_box) h_K)
+  | necessitation Ω β ψ h_empty ih =>
+      exact weakening (Set.empty_subset _)
+        (Deduction.necessitation ∅ α ([β] ψ)
+          (Deduction.necessitation ∅ β ψ h_empty))
+
+lemma box_neg_diamond_inconsistent : ∀ {Γ : Set Formula} {α : Program} {φ : Formula},
+    (Γ ⊢ ⟨α⟩ φ) →
+    (Γ ⊢ [α] ¬ φ) →
+    Γ ⊢ ⊥' := sorry
+
+lemma existence_lemma : ∀ {Γ : MaximalConsistentSet} {α : Program} {φ : Formula},
     ((⟨α⟩ φ) ∈ Γ.val) →
     ∃ (Δ : MaximalConsistentSet), canonicalRelation α Γ Δ ∧ φ ∈ Δ.val := by
-  intro h_in
-  let Γ_α : Set Formula := {ψ | ([α]ψ) ∈ Γ.val}
+  intro Γ α φ h_in
+  let Γ_α : Set Formula := {ψ | ([α] ψ) ∈ Γ.val}
   have h_cons : IsConsistent (Γ_α ∪ {φ}) := by
     intro h_incons
     obtain ⟨Δ, h_fin, h_sub, h_deriv⟩ := derivation_finite_support h_incons
-    sorry
-  obtain ⟨Δ, h_ext⟩ := Lindenbaum.lindenbaum (Γ_α ∪ {φ}) h_cons
+    let Δ_α := Δ ∩ Γ_α
+    have h_sub2 : Δ ⊆ Δ_α ∪ {φ} := by
+      intro ψ h_mem
+      cases h_sub h_mem with
+      | inl h => left; exact ⟨h_mem, h⟩
+      | inr h => right; exact h
+    have h_delta_phi : Δ_α ∪ {φ} ⊢ ⊥' := weakening h_sub2 h_deriv
+    have h_delta_neg : Δ_α ⊢ (¬ φ) := by
+      apply Deduction.modusPonens Δ_α (φ → ⊥')
+      . exact deduction_theorem h_delta_phi
+      . exact Deduction.axiom' Δ_α ((φ → ⊥') → ¬ φ) (Axiom.negIntro φ)
+    have h_box_neg : Γ.val ⊢ ([α] ¬ φ) :=
+      box_of_derivation h_delta_neg (fun ψ h => h.2)
+    have h_in_Γ : ([α] ¬ φ) ∈ Γ.val := mcs_is_closed h_box_neg
+    have h_incons_Γ : Γ.val ⊢ ⊥' :=
+      box_neg_diamond_inconsistent
+        (Deduction.premise _ _ h_in)
+        (Deduction.premise _ _ h_in_Γ)
+    exact Γ.property.1 h_incons_Γ
+  obtain ⟨Δ, h_ext⟩ := Lindenbaum.lindenbaum h_cons
   exact
-    ⟨Δ
+    ⟨ Δ
     , λ h_box => h_ext (Set.mem_union_left _ h_box)
     , h_ext (Set.mem_union_right _ rfl)
     ⟩
 
 lemma truth_lemma : ∀ {φ : Formula} {Γ : canonicalModel.F.W},
     ((canonicalModel, Γ) ⊨ φ) ↔ φ ∈ Γ.val := by
-  intro φ Γ
+  intro φ
   induction φ using Formula.rec (motive_2 := λ _ => True) with
-  | false => sorry
-  | atom p => sorry
-  | neg φ ih => sorry
-  | conj φ ψ ih_φ ih_ψ => sorry
-  | diamond α φ ih => sorry
+  | false =>
+      intro Γ
+      constructor
+      . intros h_sat
+        simp [satisfies] at h_sat
+      . intros false_in
+        simp [satisfies]
+        have h_deriv_false : Γ.val ⊢ ⊥' := by
+          apply Deduction.premise
+          exact false_in
+        have ⟨h_cons, _⟩ := Γ.property
+        have h_incons : ¬ IsConsistent Γ.val := by
+          simp [IsConsistent]
+          exact h_deriv_false
+        exact h_incons h_cons
+  | atom p =>
+      intro Γ
+      constructor
+      . intros h_sat
+        simp [satisfies, canonicalModel, canonicalValuation] at h_sat
+        exact h_sat
+      . intros h_in
+        simp only [satisfies, canonicalModel, canonicalValuation]
+        exact h_in
+  | neg φ ih =>
+      intro Γ
+      constructor
+      . intros h_sat
+        simp [satisfies] at h_sat
+        exact mcs_complete (ih.not.mp h_sat)
+      . intros h_neg_phi_in
+        simp [satisfies]
+        intro h_sat
+        exact mcs_no_contradiction (ih.mp h_sat) h_neg_phi_in
+  | conj φ ψ ih_φ ih_ψ =>
+      intro Γ
+      constructor
+      . intros h_sat
+        simp [satisfies] at h_sat
+        have φ_in : φ ∈ Γ.val := ih_φ.mp h_sat.1
+        have ψ_in : ψ ∈ Γ.val := ih_ψ.mp h_sat.2
+        have h_ax : Γ.val ⊢ (φ → (ψ → (φ ∧ ψ))) := by
+          apply Deduction.axiom'
+          apply Axiom.conjIntro
+        have h_step : Γ.val ⊢ (ψ → (φ ∧ ψ)) := by
+          apply Deduction.modusPonens Γ.val φ
+          · exact Deduction.premise Γ.val φ φ_in
+          · exact h_ax
+        have h_conj : Γ.val ⊢ (φ ∧ ψ) := by
+          apply Deduction.modusPonens Γ.val ψ
+          · exact Deduction.premise Γ.val ψ ψ_in
+          · exact h_step
+        exact mcs_is_closed h_conj
+      . intros h_in
+        simp [satisfies]
+        have h_deriv_and : Γ.val ⊢ φ ∧ ψ := Deduction.premise Γ.val (φ ∧ ψ) h_in
+        constructor
+        . have h_deriv : Γ.val ⊢ φ := by
+            have step : (Γ.val ⊢ (φ ∧ ψ) → φ) :=
+              Deduction.axiom' Γ.val ((φ ∧ ψ) → φ) (Axiom.conjElimL φ ψ)
+            exact Deduction.modusPonens Γ.val (φ ∧ ψ) (φ) h_deriv_and step
+          have h_phi_in : φ ∈ Γ.val := mcs_is_closed h_deriv
+          exact ih_φ.mpr h_phi_in
+        . have h_deriv : Γ.val ⊢ ψ := by
+            have step : (Γ.val ⊢ (φ ∧ ψ) → ψ) :=
+              Deduction.axiom' Γ.val ((φ ∧ ψ) → ψ) (Axiom.conjElimR φ ψ)
+            exact Deduction.modusPonens Γ.val (φ ∧ ψ) (ψ) h_deriv_and step
+          have h_psi_in : ψ ∈ Γ.val := mcs_is_closed h_deriv
+          exact ih_ψ.mpr h_psi_in
+  | diamond α φ _ ih =>
+      intro Γ
+      constructor
+      . intros h_sat
+        simp [satisfies] at h_sat
+        obtain ⟨Δ, h_rel, h_sat'⟩ := h_sat
+        have h_phi_in : φ ∈ Δ.val := ih.mp h_sat'
+        by_contra h_not_in
+        have h_neg_dia : (¬ (⟨α⟩ φ)) ∈ Γ.val := mcs_complete h_not_in
+        have h_deriv_box : Γ.val ⊢ ([α] ¬ φ) := by
+          apply Deduction.modusPonens Γ.val (¬ (⟨α⟩ φ))
+          · exact Deduction.premise Γ.val (¬ (⟨α⟩ φ)) h_neg_dia
+          · apply weakening (show ∅ ⊆ Γ.val by simp)
+            exact neg_diamond_to_box_neg α φ
+        have h_box_in : ([α] ¬ φ) ∈ Γ.val := mcs_is_closed h_deriv_box
+        have h_neg_phi_in : (¬ φ) ∈ Δ.val := h_rel h_box_in
+        exact mcs_no_contradiction h_phi_in h_neg_phi_in
+      . intros h_in
+        simp [satisfies]
+        obtain ⟨Δ, h_rel, h_phi_in⟩ := existence_lemma h_in
+        exact ⟨Δ, h_rel, ih.mpr h_phi_in⟩
   | atomic p => trivial
   | comp α β ih_α ih_β => trivial
   | choice α β ih_α ih_β => trivial
@@ -391,7 +535,8 @@ lemma truth_lemma : ∀ {φ : Formula} {Γ : canonicalModel.F.W},
 def reachableWorlds (Γ : MaximalConsistentSet) : Set MaximalConsistentSet :=
   {Δ | ∃ Ω, canonicalRelation r₁ Ω Γ ∧ canonicalRelation r₂ Ω Δ}
 
-lemma gamma_in_reachable (Γ : MaximalConsistentSet) : Γ ∈ reachableWorlds Γ := by
+lemma gamma_in_reachable : ∀ {Γ : MaximalConsistentSet},
+    Γ ∈ reachableWorlds Γ := by
   simp only [reachableWorlds, Set.mem_setOf_eq]
   sorry
 
@@ -399,34 +544,34 @@ def generatedSubmodel (Γ : MaximalConsistentSet) : Model where
   F := {
     W := reachableWorlds Γ
     R := λ α ⟨Δ, _⟩  ⟨Δ', _⟩ => canonicalRelation α Δ Δ'
-    nonempty := ⟨Γ, gamma_in_reachable Γ⟩
+    nonempty := ⟨Γ, gamma_in_reachable⟩
   }
   V := λ lit ⟨Δ, _⟩ => canonicalValuation lit Δ
 
 def gamma_is_world (Γ : MaximalConsistentSet) : (generatedSubmodel Γ).F.W :=
-  ⟨Γ, gamma_in_reachable Γ⟩
+  ⟨Γ, gamma_in_reachable⟩
 
 instance generatedSubmodelProperStandard (Γ : MaximalConsistentSet) :
     ProperStandard (generatedSubmodel Γ) := sorry
 
-lemma submodel_truth_at_gamma (Γ : MaximalConsistentSet) (φ : Formula) :
+lemma submodel_truth_at_gamma : ∀ {Γ : MaximalConsistentSet} {φ : Formula},
     ((generatedSubmodel Γ, gamma_is_world Γ) ⊨ φ) ↔ φ ∈ Γ.val := sorry
 
 end CanonicalModel
 open CanonicalModel
 
-lemma contrapositive_completeness :
-    ∀ {φ : Formula}, (¬ ⊢ φ) →
+lemma contrapositive_completeness : ∀ {φ : Formula},
+    (¬ ⊢ φ) →
     ∃ (M : Model) (_ : ProperStandard M), ¬ (M ⊨ φ) := by
   intros φ h_not_prov
   have h₁ : IsConsistent {¬ φ} := by
     rewrite [deduction_consistency] at h_not_prov
     exact Decidable.not_not.mp h_not_prov
-  obtain ⟨Γ, h₂⟩ := Lindenbaum.lindenbaum {¬ φ} h₁
+  obtain ⟨Γ, h₂⟩ := Lindenbaum.lindenbaum h₁
   have h₃ : (¬ φ) ∈ Γ.val := h₂ (Set.mem_singleton (¬ φ))
   have h₄ : φ ∉ Γ.val := by
     by_contra h_in
-    have h_not_in : (¬ φ) ∉ Γ.val := mcs_no_contradiction Γ φ h_in
+    have h_not_in : (¬ φ) ∉ Γ.val := mcs_no_contradiction h_in
     exact h_not_in h₃
   use generatedSubmodel Γ, generatedSubmodelProperStandard Γ
   intro h_global_sat

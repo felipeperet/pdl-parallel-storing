@@ -20,6 +20,8 @@ inductive Axiom : Formula → Prop where
   | conjElimL φ ψ : Axiom ((φ ∧ ψ) → φ)
   | conjElimR φ ψ : Axiom ((φ ∧ ψ) → ψ)
   | contradiction φ : Axiom ((φ ∧ (¬ φ)) → ⊥')
+  | negIntro φ : Axiom ((φ → ⊥') → ¬ φ)
+  | negElim φ : Axiom ((¬ φ) → (φ → ⊥'))
   -- Classical Logic Axiom
   | classicalReductio φ : Axiom (((¬ φ) → ⊥') → φ)
   -- Modal Axioms
