@@ -391,7 +391,21 @@ lemma box_of_derivation :
 lemma box_neg_diamond_inconsistent : ∀ {Γ : Set Formula} {α : Program} {φ : Formula},
     (Γ ⊢ ⟨α⟩ φ) →
     (Γ ⊢ [α] ¬ φ) →
-    Γ ⊢ ⊥' := sorry
+    Γ ⊢ ⊥' := by
+  intros Γ α φ h₁ h₂
+  have h_dual : Γ ⊢ (⟨α⟩ φ) ↔ ¬ ([α] ¬ φ) := Deduction.axiom' Γ _ (Axiom.duality α φ)
+  have h_to_neg_box : Γ ⊢ (⟨α⟩ φ) → ¬ ([α] ¬ φ) := iff_mp h_dual
+  have h_neg_box : Γ ⊢ ¬ ([α] ¬ φ) := Deduction.modusPonens _ _ _ h₁ h_to_neg_box
+  have h_conj : Γ ⊢ (([α] ¬ φ) → ((¬ ([α] ¬ φ)) → (([α] ¬ φ) ∧  ¬ ([α] ¬ φ)))) := by
+    apply Deduction.axiom'
+    apply Axiom.conjIntro
+  have h_step₁ : Γ ⊢ ((¬ ([α] ¬ φ)) → (([α] ¬ φ) ∧  ¬ ([α] ¬ φ))) :=
+    Deduction.modusPonens _ _ _ h₂ h_conj
+  have h_step₂ : Γ ⊢ (([α] ¬ φ) ∧  ¬ ([α] ¬ φ)) :=
+    Deduction.modusPonens _ _ _ h_neg_box h_step₁
+  have h_contra : Γ ⊢ (([α] ¬ φ) ∧  ¬ ([α] ¬ φ)) → ⊥' :=
+    Deduction.axiom' _ _ (Axiom.contradiction _)
+  apply Deduction.modusPonens _ _ _ h_step₂ h_contra
 
 lemma existence_lemma : ∀ {Γ : MaximalConsistentSet} {α : Program} {φ : Formula},
     ((⟨α⟩ φ) ∈ Γ.val) →
