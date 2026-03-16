@@ -31,16 +31,16 @@ lemma deduction_consistency_aux : ∀ {Γ : Set Formula} {φ : Formula},
         apply Deduction.axiom'
         apply Axiom.conjIntro
       have h_step : (Γ ∪ {¬ φ}) ⊢ ((¬ φ) → (φ ∧ (¬ φ))) := by
-        exact Deduction.modusPonens (Γ ∪ {¬ φ}) φ ((¬ φ) → (φ ∧ (¬ φ))) h₁ h_ax
-      exact Deduction.modusPonens (Γ ∪ {¬ φ}) (¬ φ) (φ ∧ (¬ φ)) h₂ h_step
+        exact Deduction.modusPonens h₁ h_ax
+      exact Deduction.modusPonens h₂ h_step
     have h₄ : Γ ∪ {¬ φ} ⊢ ((φ ∧ (¬ φ)) → ⊥') := by
       apply Deduction.axiom'
       apply Axiom.contradiction
-    exact Deduction.modusPonens (Γ ∪ {¬ φ}) (φ ∧ (¬ φ)) ⊥' h₃ h₄
+    exact Deduction.modusPonens h₃ h₄
   . intros h_inconsistent
     simp only [IsConsistent, Decidable.not_not] at h_inconsistent
     have h_imp : Γ ⊢ ((¬ φ) → ⊥') := deduction_theorem h_inconsistent
-    apply Deduction.modusPonens Γ ((¬ φ) → ⊥') φ h_imp
+    apply Deduction.modusPonens h_imp
     apply Deduction.axiom'
     apply Axiom.classicalReductio
 
@@ -61,19 +61,19 @@ lemma mcs_no_contradiction : ∀ {Γ : MaximalConsistentSet} {φ : Formula},
   simp only [MaximalConsistentSet] at Γ
   obtain ⟨h_consistent, _⟩ := Γ.property
   apply h_consistent
-  have h_derives_phi : Γ ⊢ φ := Deduction.premise Γ φ h_phi_in
-  have h_derives_not_phi : Γ ⊢ ¬ φ := Deduction.premise Γ (¬ φ) h_not_phi_in
+  have h_derives_phi : Γ ⊢ φ := Deduction.premise h_phi_in
+  have h_derives_not_phi : Γ ⊢ ¬ φ := Deduction.premise h_not_phi_in
   have h_conj : Γ ⊢ (φ ∧ ¬ φ) := by
     have h_conj_intro : Γ ⊢ (φ → (¬ φ) → (φ ∧ ¬ φ)) := by
       apply Deduction.axiom'
       apply Axiom.conjIntro
     have h_step : Γ ⊢ (¬ φ) → (φ ∧ ¬ φ) :=
-      Deduction.modusPonens Γ φ ((¬ φ) → (φ ∧ ¬ φ)) h_derives_phi h_conj_intro
-    exact Deduction.modusPonens Γ (¬ φ) (φ ∧ ¬ φ) h_derives_not_phi h_step
+      Deduction.modusPonens h_derives_phi h_conj_intro
+    exact Deduction.modusPonens h_derives_not_phi h_step
   have h_contra_intro : Γ ⊢ ((φ ∧ ¬ φ) → ⊥') := by
     apply Deduction.axiom'
     apply Axiom.contradiction
-  exact Deduction.modusPonens Γ (φ ∧ ¬ φ) ⊥' h_conj h_contra_intro
+  exact Deduction.modusPonens h_conj h_contra_intro
 
 lemma consistency_either : ∀ {Γ : Set Formula} {φ : Formula},
     IsConsistent Γ →
@@ -174,7 +174,7 @@ lemma derivation_finite_support : ∀ {Γ : Set Formula} {φ : Formula},
     ∃ (Δ : Set Formula), Finite Δ ∧ (Δ ⊆ Γ) ∧ (Δ ⊢ φ) := by
   intros _ _ h_deriv
   induction h_deriv with
-  | premise _ φ h_mem =>
+  | @premise _ φ h_mem =>
       use {φ}
       constructor
       · exact Set.finite_singleton φ
@@ -185,7 +185,7 @@ lemma derivation_finite_support : ∀ {Γ : Set Formula} {φ : Formula},
         exact h_mem
       · apply Deduction.premise
         simp only [Set.mem_singleton_iff]
-  | axiom' _ _ h_ax =>
+  | axiom' h_ax =>
       use ∅
       constructor
       · exact Set.finite_empty
@@ -193,7 +193,7 @@ lemma derivation_finite_support : ∀ {Γ : Set Formula} {φ : Formula},
       · simp only [Set.empty_subset]
       · apply Deduction.axiom'
         exact h_ax
-  | modusPonens _ _ _ _ _ ih₁ ih₂ =>
+  | modusPonens _ _ ih₁ ih₂ =>
       obtain ⟨s₁, h₁_finite, h₁_sub, h₁_deriv⟩ := ih₁
       obtain ⟨s₂, h₂_finite, h₂_sub, h₂_deriv⟩ := ih₂
       use s₁ ∪ s₂
@@ -204,7 +204,7 @@ lemma derivation_finite_support : ∀ {Γ : Set Formula} {φ : Formula},
       · apply Deduction.modusPonens
         · exact weakening Set.subset_union_left h₁_deriv
         · exact weakening Set.subset_union_right h₂_deriv
-  | necessitation _ _ _ h_empty _ =>
+  | necessitation h_empty _ =>
       use ∅
       constructor
       · exact Set.finite_empty
@@ -373,39 +373,38 @@ lemma box_of_derivation :
     Γ.val ⊢ ([α] φ) := by
   intros Γ α Δ φ h_deriv h_box
   induction h_deriv with
-  | premise Ω ψ h_mem =>
-      exact Deduction.premise Γ.val ([α] ψ) (h_box ψ h_mem)
-  | axiom' Γ.val ψ h_ax =>
-      exact weakening (Set.empty_subset _)
-        (Deduction.necessitation ∅ α ψ (Deduction.axiom' ∅ ψ h_ax))
-  | modusPonens Ω ψ χ h₁ h₂ ih₁ ih₂ =>
+  | @premise Ω ψ h_mem =>
+      exact Deduction.premise (h_box ψ h_mem)
+  | @axiom' Γ.val ψ h_ax =>
+      exact weakening (Set.empty_subset _) (Deduction.necessitation (Deduction.axiom' h_ax))
+  | @modusPonens Ω ψ χ h₁ h₂ ih₁ ih₂ =>
       have h_K : Γ.val ⊢ ([α] ψ → χ) → ([α] ψ) → ([α] χ) :=
-        Deduction.axiom' Γ.val (([α] ψ → χ) → ([α] ψ) → ([α] χ)) (Axiom.modalK α ψ χ)
-      exact Deduction.modusPonens Γ.val _ _ (ih₁ h_box)
-        (Deduction.modusPonens Γ.val _ _ (ih₂ h_box) h_K)
-  | necessitation Ω β ψ h_empty ih =>
-      exact weakening (Set.empty_subset _)
-        (Deduction.necessitation ∅ α ([β] ψ)
-          (Deduction.necessitation ∅ β ψ h_empty))
+        Deduction.axiom' (Axiom.modalK α ψ χ)
+      exact Deduction.modusPonens (ih₁ h_box)
+        (Deduction.modusPonens (ih₂ h_box) h_K)
+  | @necessitation Ω β ψ h_empty ih =>
+      exact weakening
+        (Set.empty_subset _)
+        (Deduction.necessitation (Deduction.necessitation h_empty))
 
-lemma box_neg_diamond_inconsistent : ∀ {Γ : Set Formula} {α : Program} {φ : Formula},
+lemma diamond_box_neg_inconsistent : ∀ {Γ : Set Formula} {α : Program} {φ : Formula},
     (Γ ⊢ ⟨α⟩ φ) →
     (Γ ⊢ [α] ¬ φ) →
     Γ ⊢ ⊥' := by
   intros Γ α φ h₁ h₂
-  have h_dual : Γ ⊢ (⟨α⟩ φ) ↔ ¬ ([α] ¬ φ) := Deduction.axiom' Γ _ (Axiom.duality α φ)
+  have h_dual : Γ ⊢ (⟨α⟩ φ) ↔ ¬ ([α] ¬ φ) := Deduction.axiom' (Axiom.duality α φ)
   have h_to_neg_box : Γ ⊢ (⟨α⟩ φ) → ¬ ([α] ¬ φ) := iff_mp h_dual
-  have h_neg_box : Γ ⊢ ¬ ([α] ¬ φ) := Deduction.modusPonens _ _ _ h₁ h_to_neg_box
+  have h_neg_box : Γ ⊢ ¬ ([α] ¬ φ) := Deduction.modusPonens h₁ h_to_neg_box
   have h_conj : Γ ⊢ (([α] ¬ φ) → ((¬ ([α] ¬ φ)) → (([α] ¬ φ) ∧  ¬ ([α] ¬ φ)))) := by
     apply Deduction.axiom'
     apply Axiom.conjIntro
   have h_step₁ : Γ ⊢ ((¬ ([α] ¬ φ)) → (([α] ¬ φ) ∧  ¬ ([α] ¬ φ))) :=
-    Deduction.modusPonens _ _ _ h₂ h_conj
+    Deduction.modusPonens h₂ h_conj
   have h_step₂ : Γ ⊢ (([α] ¬ φ) ∧  ¬ ([α] ¬ φ)) :=
-    Deduction.modusPonens _ _ _ h_neg_box h_step₁
+    Deduction.modusPonens h_neg_box h_step₁
   have h_contra : Γ ⊢ (([α] ¬ φ) ∧  ¬ ([α] ¬ φ)) → ⊥' :=
-    Deduction.axiom' _ _ (Axiom.contradiction _)
-  apply Deduction.modusPonens _ _ _ h_step₂ h_contra
+    Deduction.axiom' (Axiom.contradiction _)
+  apply Deduction.modusPonens h_step₂ h_contra
 
 lemma existence_lemma : ∀ {Γ : MaximalConsistentSet} {α : Program} {φ : Formula},
     ((⟨α⟩ φ) ∈ Γ.val) →
@@ -423,16 +422,16 @@ lemma existence_lemma : ∀ {Γ : MaximalConsistentSet} {α : Program} {φ : For
       | inr h => right; exact h
     have h_delta_phi : Δ_α ∪ {φ} ⊢ ⊥' := weakening h_sub2 h_deriv
     have h_delta_neg : Δ_α ⊢ (¬ φ) := by
-      apply Deduction.modusPonens Δ_α (φ → ⊥')
+      apply Deduction.modusPonens
       . exact deduction_theorem h_delta_phi
-      . exact Deduction.axiom' Δ_α ((φ → ⊥') → ¬ φ) (Axiom.negIntro φ)
+      . exact Deduction.axiom' (Axiom.negIntro φ)
     have h_box_neg : Γ.val ⊢ ([α] ¬ φ) :=
       box_of_derivation h_delta_neg (fun ψ h => h.2)
     have h_in_Γ : ([α] ¬ φ) ∈ Γ.val := mcs_is_closed h_box_neg
     have h_incons_Γ : Γ.val ⊢ ⊥' :=
-      box_neg_diamond_inconsistent
-        (Deduction.premise _ _ h_in)
-        (Deduction.premise _ _ h_in_Γ)
+      diamond_box_neg_inconsistent
+        (Deduction.premise h_in)
+        (Deduction.premise h_in_Γ)
     exact Γ.property.1 h_incons_Γ
   obtain ⟨Δ, h_ext⟩ := Lindenbaum.lindenbaum h_cons
   exact
@@ -490,28 +489,28 @@ lemma truth_lemma : ∀ {φ : Formula} {Γ : canonicalModel.F.W},
           apply Deduction.axiom'
           apply Axiom.conjIntro
         have h_step : Γ.val ⊢ (ψ → (φ ∧ ψ)) := by
-          apply Deduction.modusPonens Γ.val φ
-          · exact Deduction.premise Γ.val φ φ_in
+          apply Deduction.modusPonens
+          · exact Deduction.premise φ_in
           · exact h_ax
         have h_conj : Γ.val ⊢ (φ ∧ ψ) := by
-          apply Deduction.modusPonens Γ.val ψ
-          · exact Deduction.premise Γ.val ψ ψ_in
+          apply Deduction.modusPonens
+          · exact Deduction.premise ψ_in
           · exact h_step
         exact mcs_is_closed h_conj
       . intros h_in
         simp [satisfies]
-        have h_deriv_and : Γ.val ⊢ φ ∧ ψ := Deduction.premise Γ.val (φ ∧ ψ) h_in
+        have h_deriv_and : Γ.val ⊢ φ ∧ ψ := Deduction.premise h_in
         constructor
         . have h_deriv : Γ.val ⊢ φ := by
             have step : (Γ.val ⊢ (φ ∧ ψ) → φ) :=
-              Deduction.axiom' Γ.val ((φ ∧ ψ) → φ) (Axiom.conjElimL φ ψ)
-            exact Deduction.modusPonens Γ.val (φ ∧ ψ) (φ) h_deriv_and step
+              Deduction.axiom' (Axiom.conjElimL φ ψ)
+            exact Deduction.modusPonens h_deriv_and step
           have h_phi_in : φ ∈ Γ.val := mcs_is_closed h_deriv
           exact ih_φ.mpr h_phi_in
         . have h_deriv : Γ.val ⊢ ψ := by
             have step : (Γ.val ⊢ (φ ∧ ψ) → ψ) :=
-              Deduction.axiom' Γ.val ((φ ∧ ψ) → ψ) (Axiom.conjElimR φ ψ)
-            exact Deduction.modusPonens Γ.val (φ ∧ ψ) (ψ) h_deriv_and step
+              Deduction.axiom' (Axiom.conjElimR φ ψ)
+            exact Deduction.modusPonens h_deriv_and step
           have h_psi_in : ψ ∈ Γ.val := mcs_is_closed h_deriv
           exact ih_ψ.mpr h_psi_in
   | diamond α φ _ ih =>
@@ -524,8 +523,8 @@ lemma truth_lemma : ∀ {φ : Formula} {Γ : canonicalModel.F.W},
         by_contra h_not_in
         have h_neg_dia : (¬ (⟨α⟩ φ)) ∈ Γ.val := mcs_complete h_not_in
         have h_deriv_box : Γ.val ⊢ ([α] ¬ φ) := by
-          apply Deduction.modusPonens Γ.val (¬ (⟨α⟩ φ))
-          · exact Deduction.premise Γ.val (¬ (⟨α⟩ φ)) h_neg_dia
+          apply Deduction.modusPonens
+          · exact Deduction.premise h_neg_dia
           · apply weakening (show ∅ ⊆ Γ.val by simp)
             exact neg_diamond_to_box_neg α φ
         have h_box_in : ([α] ¬ φ) ∈ Γ.val := mcs_is_closed h_deriv_box

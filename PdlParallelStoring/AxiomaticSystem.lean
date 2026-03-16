@@ -56,13 +56,17 @@ inductive Axiom : Formula → Prop where
 
 -- Deduction system with context.
 inductive Deduction : Set Formula → Formula → Prop where
-  | premise Γ φ : (φ ∈ Γ) → Deduction Γ φ
-  | axiom' Γ φ : Axiom φ → Deduction Γ φ
-  | modusPonens Γ φ ψ :
+  | premise : ∀ {Γ : Set Formula} {φ : Formula},
+      (φ ∈ Γ) →
+      Deduction Γ φ
+  | axiom' {Γ : Set Formula} {φ : Formula} :
+      Axiom φ →
+      Deduction Γ φ
+  | modusPonens : ∀ {Γ : Set Formula} {φ ψ : Formula},
       Deduction Γ φ →
       Deduction Γ (φ → ψ) →
       Deduction Γ ψ
-  | necessitation Γ α φ :
+  | necessitation : ∀ {Γ : Set Formula} {α : Program} {φ : Formula},
       Deduction ∅ φ →
       Deduction Γ ([α] φ)
 
@@ -79,17 +83,17 @@ lemma weakening : ∀ {Γ Δ : Set Formula} {φ : Formula},
     Δ ⊢ φ := by
   intros _ _ _ h_sub h_deriv
   induction h_deriv with
-  | premise _ _ h_mem =>
+  | premise h_mem =>
       apply Deduction.premise
       exact h_sub h_mem
-  | axiom' _ _ h_ax =>
+  | axiom' h_ax =>
       apply Deduction.axiom'
       exact h_ax
-  | modusPonens _ _ _ _ _ ih_phi ih_imp =>
+  | modusPonens _ _ ih_phi ih_imp =>
       apply Deduction.modusPonens
       · exact ih_phi h_sub
       · exact ih_imp h_sub
-  | necessitation _ _ _ h_empty _ =>
+  | necessitation h_empty _ =>
       apply Deduction.necessitation
       exact h_empty
 
@@ -109,36 +113,36 @@ lemma deduction_theorem_general :
     (Γ ⊢ (φ → ψ)) := by
   intros _ _ h Γ φ h_eq
   induction h with
-  | premise _ χ h_in =>
+  | @premise _ χ h_in =>
       rewrite [h_eq] at h_in
       cases h_in with
       | inl h_in₁ =>
-          have h_deriv : Γ ⊢ χ := Deduction.premise Γ χ h_in₁
+          have h_deriv : Γ ⊢ χ := Deduction.premise h_in₁
           have h_weak : Γ ⊢ (χ → (φ → χ)) := by
             apply Deduction.axiom'
             apply Axiom.axiomK
-          exact Deduction.modusPonens Γ χ (φ → χ) h_deriv h_weak
+          exact Deduction.modusPonens h_deriv h_weak
       | inr h_in₂ =>
           simp only [Set.mem_singleton_iff] at h_in₂
           rewrite [h_in₂]
           apply Deduction.axiom'
           apply Axiom.axiomI
-  | axiom' _ χ ax =>
-      have h_deriv : Γ ⊢ χ := Deduction.axiom' Γ χ ax
+  | @axiom' _ χ ax =>
+      have h_deriv : Γ ⊢ χ := Deduction.axiom' ax
       have h_step : Γ ⊢ (χ → (φ → χ)) := by
         apply Deduction.axiom'
         apply Axiom.axiomK
-      exact Deduction.modusPonens Γ χ (φ → χ) h_deriv h_step
-  | modusPonens _ χ₁ χ₂ _ _ ih₁ ih₂  =>
+      exact Deduction.modusPonens h_deriv h_step
+  | @modusPonens _ χ₁ χ₂ _ _ ih₁ ih₂  =>
       subst h_eq
       simp only [forall_const] at ih₁ ih₂
       have h_comp : Γ ⊢ ((φ → χ₁ → χ₂) → ((φ → χ₁) → (φ → χ₂))) := by
         apply Deduction.axiom'
         apply Axiom.axiomS
       have h_step : Γ ⊢ ((φ → χ₁) → (φ → χ₂)) :=
-        Deduction.modusPonens Γ (φ → χ₁ → χ₂) ((φ → χ₁) → (φ → χ₂)) ih₂ h_comp
-      exact Deduction.modusPonens Γ (φ → χ₁) (φ → χ₂) ih₁ h_step
-  | necessitation _ α χ h_empty_deriv ih =>
+        Deduction.modusPonens ih₂ h_comp
+      exact Deduction.modusPonens ih₁ h_step
+  | @necessitation _ α χ h_empty_deriv ih =>
       subst h_eq
       simp only [forall_const] at ih
       have h_nec : Γ ⊢ [α] χ := by
@@ -147,7 +151,7 @@ lemma deduction_theorem_general :
       have h_weak : Γ ⊢ (([α] χ) → (φ → ([α] χ))) := by
         apply Deduction.axiom'
         apply Axiom.axiomK
-      exact Deduction.modusPonens Γ ([α] χ) (φ → ([α] χ)) h_nec h_weak
+      exact Deduction.modusPonens h_nec h_weak
 
 theorem deduction_theorem : ∀ {Γ : Set Formula} {φ ψ : Formula},
     (Γ ∪ {φ} ⊢ ψ) →
@@ -162,26 +166,26 @@ lemma cut_admissibility_general :
     Γ ⊢ ψ := by
   intros _ _ h
   induction h with
-  | premise _ φ h_in =>
+  | @premise _ φ h_in =>
       intros Δ _ h_eq h_deriv
       rewrite [h_eq] at h_in
       cases h_in with
-      | inl h_in_D => exact Deduction.premise Δ φ h_in_D
+      | inl h_in_D => exact Deduction.premise h_in_D
       | inr h_in_singleton =>
           rewrite [Set.mem_singleton_iff] at h_in_singleton
           rewrite [h_in_singleton]
           exact h_deriv
-  | axiom' _ φ h_ax =>
+  | @axiom' _ φ h_ax =>
       intros Δ _ _ _
-      exact Deduction.axiom' Δ φ h_ax
-  | modusPonens _ φ ψ _ _ ih₁ ih₂ =>
+      exact Deduction.axiom' h_ax
+  | @modusPonens _ φ ψ _ _ ih₁ ih₂ =>
       intros Δ _ h_eq h_deriv
       have h_ant : Δ ⊢ φ := ih₁ h_eq h_deriv
       have h_cond : Δ ⊢ (φ → ψ) := ih₂ h_eq h_deriv
-      exact Deduction.modusPonens Δ φ ψ h_ant h_cond
-  | necessitation _ α φ h_empty_deriv _ =>
+      exact Deduction.modusPonens h_ant h_cond
+  | @necessitation _ α φ h_empty_deriv _ =>
       intros Δ _ _ _
-      exact Deduction.necessitation Δ α φ h_empty_deriv
+      exact Deduction.necessitation h_empty_deriv
 
 theorem cut_admissibility : ∀ {Γ : Set Formula} {φ ψ : Formula},
     (Γ ⊢ φ) →
@@ -197,24 +201,24 @@ theorem cut_admissibility : ∀ {Γ : Set Formula} {φ ψ : Formula},
 lemma iff_mp {Γ : Set Formula} {φ ψ : Formula} :
     (Γ ⊢ (φ ↔ ψ)) → (Γ ⊢ (φ → ψ)) := by
   intro h
-  exact Deduction.modusPonens Γ (φ ↔ ψ) (φ → ψ) h
-    (Deduction.axiom' Γ ((φ ↔ ψ) → (φ → ψ)) (Axiom.conjElimL (φ → ψ) (ψ → φ)))
+  exact Deduction.modusPonens h
+    (Deduction.axiom' (Axiom.conjElimL (φ → ψ) (ψ → φ)))
 
 lemma iff_mpr {Γ : Set Formula} {φ ψ : Formula} :
     (Γ ⊢ (φ ↔ ψ)) → (Γ ⊢ (ψ → φ)) := by
   intro h
-  exact Deduction.modusPonens Γ (φ ↔ ψ) (ψ → φ) h
-    (Deduction.axiom' Γ ((φ ↔ ψ) → (ψ → φ)) (Axiom.conjElimR (φ → ψ) (ψ → φ)))
+  exact Deduction.modusPonens h
+    (Deduction.axiom' (Axiom.conjElimR (φ → ψ) (ψ → φ)))
 
 lemma double_neg_elim (φ : Formula) : ⊢ (((¬ (¬ φ)) → φ)) := by
   apply deduction_theorem
-  apply Deduction.modusPonens (∅ ∪ {¬ ¬ φ}) ((¬ φ) → ⊥')
+  apply Deduction.modusPonens
   · apply deduction_theorem
-    apply Deduction.modusPonens ((∅ ∪ {¬ ¬ φ}) ∪ {¬ φ}) ((¬ φ) ∧ ¬ ¬ φ)
-    · apply Deduction.modusPonens ((∅ ∪ {¬ ¬ φ}) ∪ {¬ φ}) (¬ ¬ φ)
-      · exact Deduction.premise ((∅ ∪ {¬ ¬ φ}) ∪ {¬ φ}) (¬ ¬ φ) (by simp)
-      · apply Deduction.modusPonens ((∅ ∪ {¬ ¬ φ}) ∪ {¬ φ}) (¬ φ)
-        · exact Deduction.premise ((∅ ∪ {¬ ¬ φ}) ∪ {¬ φ}) (¬ φ) (by simp)
+    apply Deduction.modusPonens
+    · apply Deduction.modusPonens
+      · apply @Deduction.premise ((∅ ∪ {¬ ¬ φ}) ∪ {¬ φ}) (¬ ¬ φ) (by simp)
+      · apply Deduction.modusPonens
+        · exact @Deduction.premise ((∅ ∪ {¬ ¬ φ}) ∪ {¬ φ}) (¬ φ) (by simp)
         · apply Deduction.axiom'
           exact Axiom.conjIntro (¬ φ) (¬ ¬ φ)
     · apply Deduction.axiom'
@@ -227,27 +231,25 @@ lemma contrapositive {Γ : Set Formula} {φ ψ : Formula} :
   intro h_deriv
   apply deduction_theorem
   show Γ ∪ {¬ ψ} ⊢ ¬ φ
-  apply Deduction.modusPonens (Γ ∪ {¬ ψ}) ((¬ (¬ φ)) → ⊥')
+  apply Deduction.modusPonens
   · apply deduction_theorem
     show (Γ ∪ {¬ ψ}) ∪ {¬ ¬ φ} ⊢ ⊥'
     have h_φ : (Γ ∪ {¬ ψ}) ∪ {¬ ¬ φ} ⊢ φ := by
-      apply Deduction.modusPonens ((Γ ∪ {¬ ψ}) ∪ {¬ ¬ φ}) (¬ ¬ φ) φ
+      apply Deduction.modusPonens
       · exact Deduction.premise
-          ((Γ ∪ {¬ ψ}) ∪ {¬ ¬ φ})
-          (¬ ¬ φ)
           (Set.mem_union_right (Γ ∪ {¬ ψ}) (Set.mem_singleton (¬ ¬ φ)))
       · apply weakening (show ∅ ⊆ (Γ ∪ {¬ ψ}) ∪ {¬ ¬ φ} by simp)
         exact double_neg_elim φ
     have h_ψ : (Γ ∪ {¬ ψ}) ∪ {¬ ¬ φ} ⊢ ψ := by
-      apply Deduction.modusPonens ((Γ ∪ {¬ ψ}) ∪ {¬ ¬ φ}) φ ψ
+      apply Deduction.modusPonens
       · exact h_φ
       · apply weakening (show Γ ⊆ (Γ ∪ {¬ ψ}) ∪ {¬ ¬ φ} from
           Set.subset_union_of_subset_left (Set.subset_union_left) _)
         exact h_deriv
-    apply Deduction.modusPonens ((Γ ∪ {¬ ψ}) ∪ {¬ ¬ φ}) (ψ ∧ ¬ ψ)
-    · apply Deduction.modusPonens ((Γ ∪ {¬ ψ}) ∪ {¬ ¬ φ}) (¬ ψ)
-      · exact Deduction.premise ((Γ ∪ {¬ ψ}) ∪ {¬ ¬ φ}) (¬ ψ) (by simp)
-      · apply Deduction.modusPonens ((Γ ∪ {¬ ψ}) ∪ {¬ ¬ φ}) ψ
+    apply Deduction.modusPonens
+    · apply Deduction.modusPonens
+      · exact @Deduction.premise ((Γ ∪ {¬ ψ}) ∪ {¬ ¬ φ}) (¬ ψ) (by simp)
+      · apply Deduction.modusPonens
         · exact h_ψ
         · apply Deduction.axiom'
           apply Axiom.conjIntro
@@ -262,29 +264,26 @@ lemma diamond_monotonicity (α : Program) {φ ψ : Formula} :
   apply deduction_theorem
   simp only [Set.union_singleton, insert_empty_eq]
   have h_dual_φ : {⟨α⟩ φ} ⊢ (⟨α⟩ φ) ↔ ¬ ([α] ¬ φ) :=
-    Deduction.axiom' {⟨α⟩ φ} ((⟨α⟩ φ) ↔ ¬ ([α] ¬ φ)) (Axiom.duality α φ)
+    Deduction.axiom' (Axiom.duality α φ)
   have h_to_box_φ : {⟨α⟩ φ} ⊢ ((⟨α⟩ φ) → ¬ ([α] ¬ φ)) :=
     iff_mp h_dual_φ
   have h_prem_φ : {⟨α⟩ φ} ⊢ (⟨α⟩ φ) :=
-    Deduction.premise {⟨α⟩ φ} (⟨α⟩ φ) (Set.mem_singleton (⟨α⟩ φ))
+    Deduction.premise (Set.mem_singleton (⟨α⟩ φ))
   have h_neg_box_φ : {⟨α⟩ φ} ⊢ ¬ ([α] ¬ φ) :=
-    Deduction.modusPonens {⟨α⟩ φ} (⟨α⟩ φ) (¬ ([α] ¬ φ)) h_prem_φ h_to_box_φ
+    Deduction.modusPonens h_prem_φ h_to_box_φ
   have h_nec : {⟨α⟩ φ} ⊢ [α] ((¬ ψ) → ¬ φ) :=
-    Deduction.necessitation {⟨α⟩ φ} α ((¬ ψ) → ¬ φ) (contrapositive h_deriv)
+    Deduction.necessitation (contrapositive h_deriv)
   have h_modalK_ax : {⟨α⟩ φ} ⊢ ([α] ((¬ ψ) → ¬ φ)) → (([α] (¬ ψ)) → ([α] (¬ φ))) :=
-    Deduction.axiom'
-      {⟨α⟩ φ}
-      (([α] ((¬ ψ) → ¬ φ)) → (([α] (¬ ψ)) → ([α] (¬ φ))))
-      (Axiom.modalK α (¬ ψ) (¬ φ))
+    Deduction.axiom' (Axiom.modalK α (¬ ψ) (¬ φ))
   have h_modalK : {⟨α⟩ φ} ⊢ (([α] (¬ ψ)) → ([α] (¬ φ))) :=
-    Deduction.modusPonens {⟨α⟩ φ} ([α] ((¬ ψ) → ¬ φ)) (([α] (¬ ψ)) → ([α] (¬ φ))) h_nec h_modalK_ax
+    Deduction.modusPonens h_nec h_modalK_ax
   have h_neg_box_ψ : {⟨α⟩ φ} ⊢ ¬ ([α] ¬ ψ) :=
-    Deduction.modusPonens {⟨α⟩ φ} (¬ ([α] ¬ φ)) (¬ ([α] ¬ ψ)) h_neg_box_φ (contrapositive h_modalK)
+    Deduction.modusPonens h_neg_box_φ (contrapositive h_modalK)
   have h_dual_ψ : {⟨α⟩ φ} ⊢ (⟨α⟩ ψ) ↔ ¬ ([α] ¬ ψ) :=
-    Deduction.axiom' {⟨α⟩ φ} ((⟨α⟩ ψ) ↔ ¬ ([α] ¬ ψ)) (Axiom.duality α ψ)
+    Deduction.axiom' (Axiom.duality α ψ)
   have h_from_box_ψ : {⟨α⟩ φ} ⊢ ((¬ ([α] ¬ ψ)) → (⟨α⟩ ψ)) :=
     iff_mpr h_dual_ψ
-  exact Deduction.modusPonens {⟨α⟩ φ} (¬ ([α] ¬ ψ)) (⟨α⟩ ψ) h_neg_box_ψ h_from_box_ψ
+  exact Deduction.modusPonens h_neg_box_ψ h_from_box_ψ
 
 lemma neg_diamond_to_box_neg (α : Program) (φ : Formula) :
     ⊢ ((¬ (⟨α⟩ φ)) → ([α] ¬ φ)) := by

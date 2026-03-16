@@ -251,11 +251,11 @@ theorem soundness_general :
     (∀ ψ ∈ Γ, ⊨ ψ) → ⊨ φ := by
   intros _ _ h
   induction h with
-  | premise _ _ hMem =>
+  | premise hMem =>
       intros hIn
       apply hIn
       exact hMem
-  | axiom' _ _ ax =>
+  | axiom' ax =>
       intros
       cases ax with
       | modalComposition => apply soundness_composition
@@ -275,12 +275,12 @@ theorem soundness_general :
       | storeRestoreDiamond => apply soundness_store_restore_diamond
       | storeRestoreIterate => apply soundness_store_restore_iterate
       | _ => sorry
-  | modusPonens _ _ _ _ _ ih₁ ih₂ =>
+  | modusPonens _ _ ih₁ ih₂ =>
       intros hIn
       apply soundness_modus_ponens
       . exact ih₁ hIn
       . exact ih₂ hIn
-  | necessitation _ _ _ _ ih =>
+  | necessitation _ ih =>
       intros
       apply soundness_necessitation
       apply ih
