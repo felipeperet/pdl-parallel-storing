@@ -285,6 +285,46 @@ lemma diamond_monotonicity (α : Program) {φ ψ : Formula} :
     iff_mpr h_dual_ψ
   exact Deduction.modusPonens h_neg_box_ψ h_from_box_ψ
 
+lemma diamond_box_neg_inconsistent : ∀ {Γ : Set Formula} {α : Program} {φ : Formula},
+    (Γ ⊢ ⟨α⟩ φ) →
+    (Γ ⊢ [α] ¬ φ) →
+    Γ ⊢ ⊥' := by
+  intros Γ α φ h₁ h₂
+  have h_dual : Γ ⊢ (⟨α⟩ φ) ↔ ¬ ([α] ¬ φ) := Deduction.axiom' (Axiom.duality α φ)
+  have h_to_neg_box : Γ ⊢ (⟨α⟩ φ) → ¬ ([α] ¬ φ) := iff_mp h_dual
+  have h_neg_box : Γ ⊢ ¬ ([α] ¬ φ) := Deduction.modusPonens h₁ h_to_neg_box
+  have h_conj : Γ ⊢ (([α] ¬ φ) → ((¬ ([α] ¬ φ)) → (([α] ¬ φ) ∧  ¬ ([α] ¬ φ)))) := by
+    apply Deduction.axiom'
+    apply Axiom.conjIntro
+  have h_step₁ : Γ ⊢ ((¬ ([α] ¬ φ)) → (([α] ¬ φ) ∧  ¬ ([α] ¬ φ))) :=
+    Deduction.modusPonens h₂ h_conj
+  have h_step₂ : Γ ⊢ (([α] ¬ φ) ∧  ¬ ([α] ¬ φ)) :=
+    Deduction.modusPonens h_neg_box h_step₁
+  have h_contra : Γ ⊢ (([α] ¬ φ) ∧  ¬ ([α] ¬ φ)) → ⊥' :=
+    Deduction.axiom' (Axiom.contradiction _)
+  apply Deduction.modusPonens h_step₂ h_contra
+
+lemma box_of_derivation :
+    ∀ {Γ : Set Formula} {α : Program} {Δ : Set Formula} {φ : Formula},
+    (Δ ⊢ φ) →
+    (∀ ψ ∈ Δ, ([α] ψ) ∈ Γ) →
+    Γ ⊢ ([α] φ) := by
+  intros Γ α Δ φ h_deriv h_box
+  induction h_deriv with
+  | @premise Ω ψ h_mem =>
+      exact Deduction.premise (h_box ψ h_mem)
+  | @axiom' Γ.val ψ h_ax =>
+      exact weakening (Set.empty_subset _) (Deduction.necessitation (Deduction.axiom' h_ax))
+  | @modusPonens Ω ψ χ h₁ h₂ ih₁ ih₂ =>
+      have h_K : Γ ⊢ ([α] ψ → χ) → ([α] ψ) → ([α] χ) :=
+        Deduction.axiom' (Axiom.modalK α ψ χ)
+      exact Deduction.modusPonens (ih₁ h_box)
+        (Deduction.modusPonens (ih₂ h_box) h_K)
+  | @necessitation Ω β ψ h_empty ih =>
+      exact weakening
+        (Set.empty_subset _)
+        (Deduction.necessitation (Deduction.necessitation h_empty))
+
 lemma neg_diamond_to_box_neg (α : Program) (φ : Formula) :
     ⊢ ((¬ (⟨α⟩ φ)) → ([α] ¬ φ)) := by
   simp [box]

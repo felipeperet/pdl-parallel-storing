@@ -120,15 +120,68 @@ lemma soundness_temporal_forward (φ : Formula) :
   intros _ P M _ hEq w hSat
   subst hEq
   simp only [satisfies, Decidable.not_not, not_exists, not_forall, not_and] at hSat
-  obtain ⟨hSat₁, hSat₂⟩ := hSat
-  obtain ⟨s, hAnd⟩ := hSat₂
-  obtain ⟨hRws, hAll⟩ := hAnd
-  have hR₁ : M.F.R r₁ s w :=  by
+  obtain ⟨hSat, hEx⟩ := hSat
+  obtain ⟨s, hEx₂⟩ := hEx
+  obtain ⟨hRws, hAll⟩ := hEx₂
+  have hR : M.F.R r₁ s w :=  by
     rewrite [P.s₁] at hRws
     obtain ⟨w', t, hw_eq, hs_eq⟩ := hRws
     rewrite [P.r₁]
     use w', t
-  have hNotSat : ¬ (M, w) ⊨ φ := hAll w hR₁
+  have hNotSat : ¬ (M, w) ⊨ φ := hAll w hR
+  exact hNotSat hSat
+
+lemma soundness_temporal_backward (φ : Formula) :
+    ⊨ φ → ([r₁] ⟨s₁⟩ φ) := by
+  intros F P M PS hEq w hSat
+  subst hEq
+  simp only
+    [satisfies, Decidable.not_not, not_exists, not_and, not_forall, Classical.not_imp ] at hSat
+  obtain ⟨hSat, hEx⟩ := hSat
+  obtain ⟨s, hEx₂⟩ := hEx
+  obtain ⟨hRws, hAll⟩ := hEx₂
+  have hR : M.F.R s₁ s w := by
+    rewrite [P.r₁] at hRws
+    obtain ⟨t, u, hw_eq, hs_eq⟩ := hRws
+    rewrite [P.s₁]
+    use t, u
+  have hNotSat : ¬ (M, w) ⊨ φ := hAll w hR
+  exact hNotSat hSat
+
+lemma soundness_temporal_forward₂ (φ : Formula) :
+    ⊨ φ → ([s₂] ⟨r₂⟩ φ) := by
+  intros F P M PS hEq w hSat
+  subst hEq
+  obtain ⟨hSat₁, hSat₂⟩ := hSat
+  simp only
+    [ satisfies, Decidable.not_not, not_exists, not_and, not_forall
+    , Classical.not_imp ] at hSat₁ hSat₂
+  obtain ⟨s, hEx⟩ := hSat₂
+  obtain ⟨hEx₂, hAll⟩ := hEx
+  have hRsw : M.F.R r₂ s w := by
+    simp only [P.s₂, exists_eq_left'] at hEx₂
+    simp only [P.r₂, exists_eq_right']
+    obtain ⟨t, hs_eq⟩ := hEx₂
+    use t
+  have hNotSat : ¬ (M, w) ⊨ φ := hAll w hRsw
+  exact hNotSat hSat₁
+
+lemma soundness_temporal_backward₂ (φ : Formula) :
+    ⊨ φ → ([r₂] ⟨s₂⟩ φ) := by
+  intros F P M PS hEq w hSat
+  subst hEq
+  obtain ⟨hSat₁, hSat₂⟩ := hSat
+  simp only
+    [ satisfies, Decidable.not_not, not_exists, not_and, not_forall
+    , Classical.not_imp ] at hSat₁ hSat₂
+  obtain ⟨s, hEx⟩ := hSat₂
+  obtain ⟨hRws, hAll⟩ := hEx
+  have hRsw : M.F.R s₂ s w := by
+    simp only [P.r₂, exists_eq_right'] at hRws
+    simp only [P.s₂, exists_eq_left']
+    obtain ⟨t, hw_eq⟩ := hRws
+    use t
+  have hNotSat : ¬ (M, w) ⊨ φ := hAll w hRsw
   exact hNotSat hSat₁
 
 lemma soundness_same_domain :
@@ -138,12 +191,14 @@ lemma soundness_same_domain :
   constructor
   . intros hSat₁
     obtain ⟨hSat₂, hAll⟩ := hSat₁
-    simp [satisfies] at hAll hSat₂
+    simp only
+      [ satisfies, not_false_eq_true, and_true, not_exists, not_forall
+      , Decidable.not_not ] at hAll hSat₂
     obtain ⟨s, hRws⟩ := hSat₂
-    simp [P.r₁] at hRws
+    simp only [P.r₁, exists_and_right, exists_eq_right'] at hRws
     obtain ⟨s', hwEq⟩ := hRws
     have hR₂ : M.F.R r₂ w s' := by
-      rewrite [P.r₂, hwEq]
+      rewrite [P.r₂]
       use s, s'
     exact hAll s' hR₂
   . intros hSat₁
@@ -159,6 +214,24 @@ lemma soundness_same_domain :
       use s', t
     exact hAll s' hR₁
 
+lemma soundness_same_domain₂ :
+    ⊨ (⟨s₁⟩ ⊤') ↔ (⟨s₂⟩ ⊤') := by
+  intros _ P M _ hEq w
+  subst hEq
+  constructor
+  . intros hSat₁
+    obtain ⟨hSat₂, hAll⟩ := hSat₁
+    simp only
+      [ satisfies, not_false_eq_true, and_true, not_exists, not_forall
+      , Decidable.not_not ] at hAll hSat₂
+    exact hAll (w ⋆ w) (P.s₂.mpr ⟨w, w, rfl, rfl⟩)
+  . intros hSat₁
+    obtain ⟨hSat₂, hAll⟩ := hSat₁
+    simp only
+      [ satisfies, not_false_eq_true, and_true, not_exists, not_forall
+      , Decidable.not_not ] at hAll hSat₂
+    exact hAll (w ⋆ w) (P.s₁.mpr ⟨w, w, rfl, rfl⟩)
+
 lemma soundness_unicity (φ : Formula) :
     ⊨ (⟨s₁ ; r₁⟩ φ) ↔ ([s₁ ; r₁] φ) := by
   intros _ _ M _ _ w
@@ -173,8 +246,7 @@ lemma soundness_unicity (φ : Formula) :
       rewrite [s₁_comp_r₁] at hRws
       exact hRws.symm
     have hxEqw : x = w := by
-      rewrite [Standard.comp] at hRwx
-      rewrite [s₁_comp_r₁] at hRwx
+      rewrite [Standard.comp, s₁_comp_r₁] at hRwx
       exact hRwx.symm
     rewrite [hsEqw] at hSat₁
     rewrite [hxEqw] at hNotSat
@@ -184,6 +256,34 @@ lemma soundness_unicity (φ : Formula) :
     obtain ⟨hPos, hNeg⟩ := hSat
     have hReach : M.F.R (s₁ ; r₁) w w := by
       rw [Standard.comp, s₁_comp_r₁]
+    have hPhiHolds : (M, w) ⊨ φ := hPos w hReach
+    have hPhiNotHolds : ¬ (M, w) ⊨ φ := hNeg w hReach
+    exact hPhiNotHolds hPhiHolds
+
+lemma soundness_unicity₂ (φ : Formula) :
+    ⊨ (⟨s₂ ; r₂⟩ φ) ↔ ([s₂ ; r₂] φ) := by
+  intros _ _ M _ _ w
+  constructor
+  . intros hAnd
+    obtain ⟨hSat₁, hSat₂⟩ := hAnd
+    simp only [satisfies, Decidable.not_not] at hSat₁ hSat₂
+    obtain ⟨s, hRws, hSat₁⟩ := hSat₁
+    obtain ⟨x, hRwx, hNotSat⟩ := hSat₂
+    have hsEqw : s = w := by
+      rewrite [Standard.comp] at hRws
+      rewrite [s₂_comp_r₂] at hRws
+      exact hRws.symm
+    have hxEqw : x = w := by
+      rewrite [Standard.comp, s₂_comp_r₂] at hRwx
+      exact hRwx.symm
+    rewrite [hsEqw] at hSat₁
+    rewrite [hxEqw] at hNotSat
+    exact hNotSat hSat₁
+  . intros hSat
+    simp only [satisfies, Decidable.not_not, not_exists, not_and] at hSat
+    obtain ⟨hPos, hNeg⟩ := hSat
+    have hReach : M.F.R (s₂ ; r₂) w w := by
+      rw [Standard.comp, s₂_comp_r₂]
     have hPhiHolds : (M, w) ⊨ φ := hPos w hReach
     have hPhiNotHolds : ¬ (M, w) ⊨ φ := hNeg w hReach
     exact hPhiNotHolds hPhiHolds
@@ -264,13 +364,13 @@ theorem soundness_general :
       | functionalR₁ => apply soundness_functional_r₁
       | functionalR₂ => apply soundness_functional_r₂
       | temporalForward => apply soundness_temporal_forward
-      | temporalBackward => sorry
-      | temporalForward₂ => sorry
-      | temporalBackward₂ => sorry
-      | sameDomain => sorry
-      | sameDomain₂ => sorry
+      | temporalBackward => apply soundness_temporal_backward
+      | temporalForward₂ => apply soundness_temporal_forward₂
+      | temporalBackward₂ => apply soundness_temporal_backward₂
+      | sameDomain => apply soundness_same_domain
+      | sameDomain₂ => apply soundness_same_domain₂
       | unicity => apply soundness_unicity
-      | unicity₂ => sorry
+      | unicity₂ => apply soundness_unicity₂
       | storeRestoreId => apply soundness_store_restore_id
       | storeRestoreDiamond => apply soundness_store_restore_diamond
       | storeRestoreIterate => apply soundness_store_restore_iterate
