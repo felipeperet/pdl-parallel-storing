@@ -4,6 +4,90 @@ import PdlParallelStoring.Properties
 open Classical
 open Program
 
+lemma soundness_axiom_I (φ : Formula) :
+    ⊨ φ → φ := by
+  intros _ _ M _ _ w
+  simp only [satisfies, Decidable.not_not, and_not_self, not_false_eq_true]
+
+lemma soundness_axiom_K (φ ψ : Formula) :
+    ⊨ φ → ψ → φ := by
+  intros _ _ M _ _ w
+  simp only [satisfies, Decidable.not_not, not_and, Classical.not_imp]
+  intros h_sat_phi _
+  exact h_sat_phi
+
+lemma soundness_axiom_S (φ ψ χ : Formula) :
+    ⊨ (φ → ψ → χ) → (φ → ψ) → φ → χ := by
+  intros _ _ M _ _ w
+  simp only [satisfies, Decidable.not_not, not_and, Classical.not_imp]
+  intros h₁ h₂ h₃
+  have h_step₁ := h₁ h₃
+  have h_step₂ := h₂ h₃
+  exact h_step₁ h_step₂
+
+lemma soundness_conj_intro (φ ψ : Formula) :
+    ⊨ φ → ψ → φ ∧ ψ := by
+  intros _ _ M _ _ w
+  simp only [satisfies, Decidable.not_not, not_and, Classical.not_imp]
+  intros h_sat_phi h_sat_psi
+  constructor
+  . exact h_sat_phi
+  . exact h_sat_psi
+
+lemma soundness_conj_elimL (φ ψ : Formula) :
+    ⊨ (φ ∧ ψ) → φ := by
+  intros _ _ M _ _ w
+  simp only [satisfies, not_and, Classical.not_imp, Decidable.not_not, and_imp]
+  intros h_sat_phi _
+  exact h_sat_phi
+
+lemma soundness_conj_elimR (φ ψ : Formula) :
+    ⊨ (φ ∧ ψ) → ψ := by
+  intros _ _ M _ _ w
+  simp only [satisfies, not_and, Classical.not_imp, Decidable.not_not, and_imp]
+  intros _ h_sat_psi
+  exact h_sat_psi
+
+lemma soundness_contradiction (φ : Formula) :
+    ⊨ (φ ∧ ¬ φ) → ⊥' := by
+  intros _ _ M _ _ w
+  simp only [satisfies, and_not_self, not_false_eq_true, not_true_eq_false, and_true]
+
+lemma soundness_neg_intro (φ : Formula) :
+    ⊨ (φ → ⊥') → ¬ φ := by
+  intros _ _ M _ _ w
+  simp only [satisfies, Decidable.not_not, not_false_eq_true, and_true, not_and_self]
+
+lemma soundness_neg_elim (φ : Formula) :
+    ⊨ (¬ φ) → φ → ⊥' := by
+  intros _ _ M _ _ w
+  simp only [satisfies, Decidable.not_not, not_false_eq_true, and_true, not_and_self]
+
+lemma soundness_classical_reductio (φ : Formula) :
+    ⊨ ((¬ φ) → ⊥') → φ := by
+  intros _ _ M _ _ w
+  simp only [satisfies, Decidable.not_not, not_false_eq_true, and_true, and_not_self]
+
+lemma soundness_duality (φ : Formula) :
+    ⊨ (⟨α⟩ φ) ↔ ¬ ([α] ¬ φ)  := by
+  intros _ _ M _ _ w
+  simp only
+    [ satisfies, not_exists, not_and, not_forall, Classical.not_imp, Decidable.not_not, imp_self
+    , and_self ]
+
+lemma soundness_modal_K (α : Program) (φ₁ φ₂ : Formula) :
+    ⊨ ([α] φ₁ → φ₂) → ([α] φ₁) → ([α] φ₂) := by
+  intros _ _ M _ _ w hAnd
+  obtain ⟨hSat₁, hSat₂⟩ := hAnd
+  simp only [satisfies, Decidable.not_not, not_exists, not_and] at hSat₁ hSat₂
+  simp only [not_forall] at hSat₂
+  obtain ⟨hAlphaBox, hCounterExample⟩ := hSat₂
+  obtain ⟨s, hRws, hPhi₂NotHolds⟩ := hCounterExample
+  have hPhi₁Holds : (M, s) ⊨ φ₁ := hAlphaBox s hRws
+  have hImp : ((M, s) ⊨ φ₁) → ((M, s) ⊨ φ₂) := hSat₁ s hRws
+  have hPhi₂Holds : (M, s) ⊨ φ₂ := hImp hPhi₁Holds
+  exact hPhi₂NotHolds hPhi₂Holds
+
 lemma soundness_composition (α β : Program) (φ : Formula) :
     ⊨ ([α ; β] φ) ↔ ([α] [β] φ) := by
   intros _ _ M _ _ w
@@ -65,19 +149,6 @@ lemma soundness_choice (α β : Program) (φ : Formula) :
     | inr hBeta =>
         have hPhiHolds : (M, s) ⊨ φ := hAll₂ s hBeta
         exact hPhiNotHolds hPhiHolds
-
-lemma soundness_k (α : Program) (φ₁ φ₂ : Formula) :
-    ⊨ ([α] φ₁ → φ₂) → ([α] φ₁) → ([α] φ₂) := by
-  intros _ _ M _ _ w hAnd
-  obtain ⟨hSat₁, hSat₂⟩ := hAnd
-  simp only [satisfies, Decidable.not_not, not_exists, not_and] at hSat₁ hSat₂
-  simp only [not_forall] at hSat₂
-  obtain ⟨hAlphaBox, hCounterExample⟩ := hSat₂
-  obtain ⟨s, hRws, hPhi₂NotHolds⟩ := hCounterExample
-  have hPhi₁Holds : (M, s) ⊨ φ₁ := hAlphaBox s hRws
-  have hImp : ((M, s) ⊨ φ₁) → ((M, s) ⊨ φ₂) := hSat₁ s hRws
-  have hPhi₂Holds : (M, s) ⊨ φ₂ := hImp hPhi₁Holds
-  exact hPhi₂NotHolds hPhi₂Holds
 
 lemma soundness_functional_r₁ (φ : Formula) :
     ⊨ (⟨r₁⟩ φ) → ([r₁] φ) := by
@@ -358,9 +429,24 @@ theorem soundness_general :
   | axiom' ax =>
       intros
       cases ax with
+      -- Propositional Logic Axioms
+      | axiomI => apply soundness_axiom_I
+      | axiomK => apply soundness_axiom_K
+      | axiomS => apply soundness_axiom_S
+      | conjIntro => apply soundness_conj_intro
+      | conjElimL => apply soundness_conj_elimL
+      | conjElimR => apply soundness_conj_elimR
+      | contradiction => apply soundness_contradiction
+      | negIntro => apply soundness_neg_intro
+      | negElim => apply soundness_neg_elim
+      -- Classical Logic Axiom
+      | classicalReductio => apply soundness_classical_reductio
+      -- Modal Axioms
+      | duality => apply soundness_duality
+      | modalK => apply soundness_modal_K
       | modalComposition => apply soundness_composition
       | modalChoice => apply soundness_choice
-      | modalK => apply soundness_k
+      -- RSPDL₀ Specific Axioms
       | functionalR₁ => apply soundness_functional_r₁
       | functionalR₂ => apply soundness_functional_r₂
       | temporalForward => apply soundness_temporal_forward
@@ -374,7 +460,6 @@ theorem soundness_general :
       | storeRestoreId => apply soundness_store_restore_id
       | storeRestoreDiamond => apply soundness_store_restore_diamond
       | storeRestoreIterate => apply soundness_store_restore_iterate
-      | _ => sorry
   | modusPonens _ _ ih₁ ih₂ =>
       intros hIn
       apply soundness_modus_ponens
