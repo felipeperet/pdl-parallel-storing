@@ -1,13 +1,10 @@
 import Mathlib.Data.Finset.Max
-import Mathlib.Data.Set.Finite.Basic
 
 import PdlParallelStoring.Syntax
 import PdlParallelStoring.Semantics
 import PdlParallelStoring.AxiomaticSystem
 
-open Program
-
-open Classical
+open Classical Program
 
 def IsConsistent (Γ : Set Formula) : Prop :=
   ¬ (Γ ⊢ ⊥')
@@ -352,10 +349,45 @@ namespace CanonicalModel
 def canonicalRelation (α : Program) (Γ Δ : MaximalConsistentSet) : Prop :=
   ∀ {φ}, (([α] φ) ∈ Γ.val) → φ ∈ Δ.val
 
+def semantic_interpretation : Formula → Prop
+  | .false => False
+  | .atom _ => True
+  | .neg φ => ¬ semantic_interpretation φ
+  | .conj φ ψ => semantic_interpretation φ ∧ semantic_interpretation ψ
+  | .diamond _ φ => semantic_interpretation φ
+
+lemma semantic_interpretation_sound : ∀ {Γ : Set Formula} {φ : Formula},
+    (Γ ⊢ φ) →
+    (∀ ψ ∈ Γ, semantic_interpretation ψ) →
+    semantic_interpretation φ := by
+  intros _ _ h
+  induction h with
+  | premise h_mem =>
+      intro h_all
+      exact h_all _ h_mem
+  | axiom' h_ax =>
+      intro _
+      cases h_ax <;> simp only [semantic_interpretation] <;> tauto
+  | modusPonens _ _ ih₁ ih₂ =>
+      intro h_all
+      have h1 := ih₁ h_all
+      have h2 := ih₂ h_all
+      simp only [semantic_interpretation] at h2
+      tauto
+  | necessitation _ ih =>
+      intro _
+      simp only [semantic_interpretation]
+      exact not_not.mpr (ih (by simp))
+
+lemma empty_consistent : IsConsistent ∅ :=
+  λ h => semantic_interpretation_sound h (by simp)
+
 def canonicalFrame : Frame where
   W := MaximalConsistentSet
   R := canonicalRelation
-  nonempty := sorry
+  nonempty := by
+    obtain ⟨Γ, _⟩ := lindenbaum empty_consistent
+    exact ⟨Γ⟩
 
 def canonicalValuation (lit : Literal) (Γ : MaximalConsistentSet) : Prop :=
   (Formula.atom lit) ∈ Γ.val
@@ -364,7 +396,123 @@ def canonicalModel : Model where
   F := canonicalFrame
   V := canonicalValuation
 
-instance canonicalStandard : Standard canonicalModel := sorry
+lemma false_not_in_mcs : ∀ {Γ : MaximalConsistentSet}, Formula.false ∉ Γ.val := by
+  intro Γ h
+  exact Γ.property.1 (Deduction.premise h)
+
+lemma list_disjunction_not_in_mcs : ∀ {L : List Formula} {Δ : MaximalConsistentSet},
+    (∀ ψ ∈ L, ψ ∉ Δ.val) →
+    list_disjunction L ∉ Δ.val := by
+  intro L
+  induction L with
+  | nil =>
+      intro Δ _
+      simp only [list_disjunction]
+      exact false_not_in_mcs
+  | cons φ rest ih =>
+      intro Δ h_all
+      simp only [list_disjunction]
+      have h_φ_not : φ ∉ Δ.val := h_all φ (.head rest)
+      have h_rest_not : list_disjunction rest ∉ Δ.val :=
+        ih (λ ψ hψ => h_all ψ (.tail φ hψ))
+      have h_neg_φ : (¬ φ) ∈ Δ.val := mcs_complete h_φ_not
+      have h_neg_rest : (¬ (list_disjunction rest)) ∈ Δ.val := mcs_complete h_rest_not
+      let χ : Formula := (¬ φ) ∧ (¬ (list_disjunction rest))
+      have h_conj : χ ∈ Δ.val := mcs_is_closed
+        (Deduction.modusPonens (Deduction.premise h_neg_rest)
+          (Deduction.modusPonens (Deduction.premise h_neg_φ)
+            (Deduction.axiom' (Axiom.conjIntro (¬ φ) (¬ (list_disjunction rest))))))
+      exact mcs_no_contradiction h_conj
+
+instance canonicalStandard : Standard canonicalModel where
+  comp := by
+    intros α β
+    funext Γ Δ
+    apply propext
+    constructor
+    · intro h_comp_rel
+      let Γ_α : Set Formula := {φ | ([α] φ) ∈ Γ.val}
+      let S_β : Set Formula :=
+        {χ : Formula | ∃ ψ : Formula, And (χ = ¬ (box β ψ)) (ψ ∉ Δ.val)}
+      have h_cons : IsConsistent (Γ_α ∪ S_β) := by
+        sorry
+      obtain ⟨mid, h_ext⟩ := lindenbaum h_cons
+      exact ⟨mid,
+        λ h => h_ext (Set.mem_union_left _ h),
+        λ {φ} h_box => by
+          by_contra h_not
+          exact mcs_no_contradiction h_box
+            (h_ext (Set.mem_union_right _ ⟨φ, ⟨rfl, h_not⟩⟩))⟩
+    · intro ⟨mid, hα, hβ⟩
+      intro φ h_box_comp
+      have h_comp_to_nested : Γ.val ⊢ ([α ; β] φ) → ([α] [β] φ) :=
+        iff_mp (Deduction.axiom' (Axiom.modalComposition α β φ))
+      have h_box_box : ([α] [β] φ) ∈ Γ.val :=
+        mcs_is_closed (Deduction.modusPonens (Deduction.premise h_box_comp) h_comp_to_nested)
+      exact hβ (hα h_box_box)
+  choice := by
+    intros α β
+    funext Γ Δ
+    apply propext
+    constructor
+    · intro h_union
+      by_contra h_neg
+      have h_not_α : ¬ canonicalRelation α Γ Δ := λ h => h_neg (Or.inl h)
+      have h_not_β : ¬ canonicalRelation β Γ Δ := λ h => h_neg (Or.inr h)
+      have hα_witness : ∃ φ : Formula, And (([α] φ) ∈ Γ.val) (φ ∉ Δ.val) := by
+        by_contra h_no
+        push_neg at h_no
+        exact h_not_α (λ {φ} h => h_no φ h)
+      have hβ_witness : ∃ φ : Formula, And (([β] φ) ∈ Γ.val) (φ ∉ Δ.val) := by
+        by_contra h_no
+        push_neg at h_no
+        exact h_not_β (λ {φ} h => h_no φ h)
+      obtain ⟨φ₁, hα₁, hφ₁_not⟩ := hα_witness
+      obtain ⟨φ₂, hβ₂, hφ₂_not⟩ := hβ_witness
+      let neg_conj : Formula := (¬ φ₁) ∧ (¬ φ₂)
+      have h_box_α_disj : ([α] (φ₁ ∨ φ₂)) ∈ Γ.val := mcs_is_closed
+        (Deduction.modusPonens (Deduction.premise hα₁)
+          (weakening (Set.empty_subset _) (box_monotonicity disj_intro_left)))
+      have h_box_β_disj : ([β] (φ₁ ∨ φ₂)) ∈ Γ.val := mcs_is_closed
+        (Deduction.modusPonens (Deduction.premise hβ₂)
+          (weakening (Set.empty_subset _) (box_monotonicity disj_intro_right)))
+      have h_conj_box : (([α] (φ₁ ∨ φ₂)) ∧ ([β] (φ₁ ∨ φ₂))) ∈ Γ.val := mcs_is_closed
+        (Deduction.modusPonens (Deduction.premise h_box_β_disj)
+          (Deduction.modusPonens (Deduction.premise h_box_α_disj)
+            (Deduction.axiom' (Axiom.conjIntro ([α] (φ₁ ∨ φ₂)) ([β] (φ₁ ∨ φ₂))))))
+      have h_choice_box : ([α ∪ β] (φ₁ ∨ φ₂)) ∈ Γ.val := mcs_is_closed
+        (Deduction.modusPonens (Deduction.premise h_conj_box)
+          (iff_mpr (Deduction.axiom' (Axiom.modalChoice α β (φ₁ ∨ φ₂)))))
+      have h_disj_in : (φ₁ ∨ φ₂) ∈ Δ.val := h_union h_choice_box
+      have h_neg₁ : (¬ φ₁) ∈ Δ.val := mcs_complete hφ₁_not
+      have h_neg₂ : (¬ φ₂) ∈ Δ.val := mcs_complete hφ₂_not
+      have h_conj_neg : neg_conj ∈ Δ.val := mcs_is_closed
+        (Deduction.modusPonens (Deduction.premise h_neg₂)
+          (Deduction.modusPonens (Deduction.premise h_neg₁)
+            (Deduction.axiom' (Axiom.conjIntro (¬ φ₁) (¬ φ₂)))))
+      exact absurd h_disj_in (mcs_no_contradiction h_conj_neg)
+    · intro h
+      cases h with
+      | inl hα =>
+          intro φ h_box_choice
+          have h_conj : (([α] φ) ∧ ([β] φ)) ∈ Γ.val := mcs_is_closed
+            (Deduction.modusPonens (Deduction.premise h_box_choice)
+              (iff_mp (Deduction.axiom' (Axiom.modalChoice α β φ))))
+          have h_left : ([α] φ) ∈ Γ.val := mcs_is_closed
+            (Deduction.modusPonens (Deduction.premise h_conj)
+              (Deduction.axiom' (Axiom.conjElimL ([α] φ) ([β] φ))))
+          exact hα h_left
+      | inr hβ =>
+          intro φ h_box_choice
+          have h_conj : (([α] φ) ∧ ([β] φ)) ∈ Γ.val := mcs_is_closed
+            (Deduction.modusPonens (Deduction.premise h_box_choice)
+              (iff_mp (Deduction.axiom' (Axiom.modalChoice α β φ))))
+          have h_right : ([β] φ) ∈ Γ.val := mcs_is_closed
+            (Deduction.modusPonens (Deduction.premise h_conj)
+              (Deduction.axiom' (Axiom.conjElimR ([α] φ) ([β] φ))))
+          exact hβ h_right
+  iter := by sorry
+  test := by sorry
 
 lemma existence_lemma : ∀ {Γ : MaximalConsistentSet} {α : Program} {φ : Formula},
     ((⟨α⟩ φ) ∈ Γ.val) →
@@ -386,7 +534,7 @@ lemma existence_lemma : ∀ {Γ : MaximalConsistentSet} {α : Program} {φ : For
       . exact deduction_theorem h_delta_phi
       . exact Deduction.axiom' (Axiom.negIntro φ)
     have h_box_neg : Γ.val ⊢ ([α] ¬ φ) :=
-      box_of_derivation h_delta_neg (fun ψ h => h.2)
+      box_of_derivation h_delta_neg (λ ψ h => h.2)
     have h_in_Γ : ([α] ¬ φ) ∈ Γ.val := mcs_is_closed h_box_neg
     have h_incons_Γ : Γ.val ⊢ ⊥' :=
       diamond_box_neg_inconsistent
@@ -510,7 +658,7 @@ def reachableWorlds (Γ : MaximalConsistentSet) : Set MaximalConsistentSet :=
 
 lemma gamma_in_reachable : ∀ {Γ : MaximalConsistentSet},
     Γ ∈ reachableWorlds Γ := by
-  simp only [reachableWorlds, Set.mem_setOf_eq]
+  simp only [reachableWorlds, Set.mem_setOf_eq, canonicalRelation]
   sorry
 
 def generatedSubmodel (Γ : MaximalConsistentSet) : Model where
@@ -528,7 +676,12 @@ instance generatedSubmodelProperStandard (Γ : MaximalConsistentSet) :
     ProperStandard (generatedSubmodel Γ) := sorry
 
 lemma submodel_truth_at_gamma : ∀ {Γ : MaximalConsistentSet} {φ : Formula},
-    ((generatedSubmodel Γ, gamma_is_world Γ) ⊨ φ) ↔ φ ∈ Γ.val := sorry
+    ((generatedSubmodel Γ, gamma_is_world Γ) ⊨ φ) ↔ φ ∈ Γ.val := by
+  intros Γ φ
+  constructor
+  . intros hSat
+    sorry
+  . sorry
 
 end CanonicalModel
 open CanonicalModel

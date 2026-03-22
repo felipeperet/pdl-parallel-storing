@@ -1,9 +1,8 @@
-import Mathlib.Data.Set.Defs
-import Mathlib.Data.Set.Insert
+import Mathlib.Data.Set.Finite.Basic
 
 import PdlParallelStoring.Syntax
 
-open Program
+open Classical Program
 
 ----------------------------------------------------------------------------------------------------
 -- Axiomatic System for RSPDL₀ (Hilbert-style with context)
@@ -75,7 +74,7 @@ notation:40 Γ " ⊢ " φ => Deduction Γ φ
 notation:40 "⊢ " φ => ∅ ⊢ φ
 
 ----------------------------------------------------------------------------------------------------
--- Properties of the system
+-- Structural Properties
 ----------------------------------------------------------------------------------------------------
 lemma weakening : ∀ {Γ Δ : Set Formula} {φ : Formula},
     (Γ ⊆ Δ) →
@@ -195,17 +194,18 @@ theorem cut_admissibility : ∀ {Γ : Set Formula} {φ ψ : Formula},
   exact cut_admissibility_general h₂ rfl h₁
 
 ----------------------------------------------------------------------------------------------------
---- Laws of the system
+--- Propositional Logic Lemmas
 ----------------------------------------------------------------------------------------------------
-
 lemma iff_mp {Γ : Set Formula} {φ ψ : Formula} :
-    (Γ ⊢ (φ ↔ ψ)) → (Γ ⊢ (φ → ψ)) := by
+    (Γ ⊢ (φ ↔ ψ)) →
+    (Γ ⊢ (φ → ψ)) := by
   intro h
   exact Deduction.modusPonens h
     (Deduction.axiom' (Axiom.conjElimL (φ → ψ) (ψ → φ)))
 
 lemma iff_mpr {Γ : Set Formula} {φ ψ : Formula} :
-    (Γ ⊢ (φ ↔ ψ)) → (Γ ⊢ (ψ → φ)) := by
+    (Γ ⊢ (φ ↔ ψ)) →
+    (Γ ⊢ (ψ → φ)) := by
   intro h
   exact Deduction.modusPonens h
     (Deduction.axiom' (Axiom.conjElimR (φ → ψ) (ψ → φ)))
@@ -226,8 +226,24 @@ lemma double_neg_elim (φ : Formula) : ⊢ (((¬ (¬ φ)) → φ)) := by
   · apply Deduction.axiom'
     exact Axiom.classicalReductio φ
 
+lemma explosion : ∀ {Γ : Set Formula} {φ : Formula},
+    (Γ ⊢ ⊥') →
+    Γ ⊢ φ := by
+  intros _ φ h
+  exact Deduction.modusPonens
+          (deduction_theorem (monotonicity h))
+          (Deduction.axiom' (Axiom.classicalReductio φ))
+
+lemma false_impl : ∀ {φ : Formula}, ⊢ ⊥' → φ := by
+  intros φ
+  apply deduction_theorem
+  apply Deduction.modusPonens _ (Deduction.axiom' (Axiom.classicalReductio φ))
+  apply deduction_theorem
+  exact Deduction.premise (Set.mem_union_left _ (Set.mem_union_right _ rfl))
+
 lemma contrapositive {Γ : Set Formula} {φ ψ : Formula} :
-    (Γ ⊢ (φ → ψ)) → (Γ ⊢ (( ¬ ψ) → (¬ φ))) := by
+    (Γ ⊢ (φ → ψ)) →
+    (Γ ⊢ (( ¬ ψ) → (¬ φ))) := by
   intro h_deriv
   apply deduction_theorem
   show Γ ∪ {¬ ψ} ⊢ ¬ φ
@@ -258,9 +274,120 @@ lemma contrapositive {Γ : Set Formula} {φ ψ : Formula} :
   · apply Deduction.axiom'
     apply Axiom.classicalReductio
 
-lemma diamond_monotonicity (α : Program) {φ ψ : Formula} :
-    (⊢ (φ → ψ)) → (⊢ ((⟨α⟩ φ) → (⟨α⟩ ψ))) := by
-  intros h_deriv
+lemma impl_chain : ∀ {φ ψ χ : Formula},
+    (⊢ φ → ψ) →
+    (⊢ ψ → χ) →
+    (⊢ φ → χ) := by
+  intros _ _ _ h₁ h₂
+  apply deduction_theorem
+  apply Deduction.modusPonens
+  · exact Deduction.modusPonens
+      (Deduction.premise (Set.mem_union_right _ rfl))
+      (weakening (Set.empty_subset _) h₁)
+  · exact weakening (Set.empty_subset _) h₂
+
+lemma disj_intro_left : ∀ {φ ψ : Formula}, ⊢ (φ → (φ ∨ ψ)) := by
+  intros φ ψ
+  let θ := (¬ φ) ∧ (¬ ψ)
+  show ∅ ⊢ (φ → ¬ θ)
+  apply deduction_theorem
+  apply Deduction.modusPonens
+  · apply deduction_theorem
+    have h_phi : (∅ ∪ {φ}) ∪ {θ} ⊢ φ :=
+      Deduction.premise (Set.mem_union_left _ (Set.mem_union_right _ rfl))
+    have h_theta : (∅ ∪ {φ}) ∪ {θ} ⊢ θ :=
+      Deduction.premise (Set.mem_union_right _ rfl)
+    have h_neg_phi : (∅ ∪ {φ}) ∪ {θ} ⊢ ¬ φ :=
+      Deduction.modusPonens h_theta
+        (Deduction.axiom' (Axiom.conjElimL (¬ φ) (¬ ψ)))
+    have h_conj : (∅ ∪ {φ}) ∪ {θ} ⊢ (φ ∧ ¬ φ) :=
+      Deduction.modusPonens h_neg_phi
+        (Deduction.modusPonens h_phi (Deduction.axiom' (Axiom.conjIntro φ (¬ φ))))
+    exact Deduction.modusPonens h_conj (Deduction.axiom' (Axiom.contradiction φ))
+  · exact Deduction.axiom' (Axiom.negIntro θ)
+
+lemma disj_intro_right : ∀ {φ ψ : Formula}, ⊢ (ψ → (φ ∨ ψ)) := by
+  intros φ ψ
+  let θ := (¬ φ) ∧ (¬ ψ)
+  show ∅ ⊢ (ψ → ¬ θ)
+  apply deduction_theorem
+  apply Deduction.modusPonens
+  · apply deduction_theorem
+    have h_psi : (∅ ∪ {ψ}) ∪ {θ} ⊢ ψ :=
+      Deduction.premise (Set.mem_union_left _ (Set.mem_union_right _ rfl))
+    have h_theta : (∅ ∪ {ψ}) ∪ {θ} ⊢ θ :=
+      Deduction.premise (Set.mem_union_right _ rfl)
+    have h_neg_psi : (∅ ∪ {ψ}) ∪ {θ} ⊢ ¬ ψ :=
+      Deduction.modusPonens h_theta
+        (Deduction.axiom' (Axiom.conjElimR (¬ φ) (¬ ψ)))
+    have h_conj : (∅ ∪ {ψ}) ∪ {θ} ⊢ (ψ ∧ ¬ ψ) :=
+      Deduction.modusPonens h_neg_psi
+        (Deduction.modusPonens h_psi (Deduction.axiom' (Axiom.conjIntro ψ (¬ ψ))))
+    exact Deduction.modusPonens h_conj (Deduction.axiom' (Axiom.contradiction ψ))
+  · exact Deduction.axiom' (Axiom.negIntro θ)
+
+lemma disj_from_neg_imp : ∀ {Γ : Set Formula} {φ ψ : Formula},
+    (Γ ∪ {¬ φ} ⊢ ψ) →
+    (Γ ⊢ disj φ ψ) := by
+  intros Γ φ ψ h
+  let θ := (¬ φ) ∧ (¬ ψ)
+  suffices Γ ⊢ ¬ θ from this
+  apply Deduction.modusPonens _ (Deduction.axiom' (Axiom.negIntro θ))
+  apply deduction_theorem
+  have h_neg_phi : Γ ∪ {θ} ⊢ ¬ φ :=
+    Deduction.modusPonens (Deduction.premise (Set.mem_union_right _ rfl))
+      (Deduction.axiom' (Axiom.conjElimL (¬ φ) (¬ ψ)))
+  have h_neg_psi : Γ ∪ {θ} ⊢ ¬ ψ :=
+    Deduction.modusPonens (Deduction.premise (Set.mem_union_right _ rfl))
+      (Deduction.axiom' (Axiom.conjElimR (¬ φ) (¬ ψ)))
+  have h_psi : Γ ∪ {θ} ⊢ ψ := by
+    apply cut_admissibility h_neg_phi
+    apply weakening _ h
+    intro x hx
+    cases hx with
+    | inl hx => exact Set.mem_union_left _ (Set.mem_union_left _ hx)
+    | inr hx => exact Set.mem_union_right _ hx
+  exact Deduction.modusPonens
+    (Deduction.modusPonens h_neg_psi
+      (Deduction.modusPonens h_psi (Deduction.axiom' (Axiom.conjIntro ψ (¬ ψ)))))
+    (Deduction.axiom' (Axiom.contradiction ψ))
+
+lemma disj_elim : ∀ {φ ψ χ : Formula},
+    (⊢ φ → χ) →
+    (⊢ ψ → χ) →
+    (⊢ (φ ∨ ψ) → χ) := by
+  intros φ ψ χ h₁ h₂
+  let θ := (¬ φ) ∧ (¬ ψ)
+  apply deduction_theorem
+  apply Deduction.modusPonens _ (Deduction.axiom' (Axiom.classicalReductio χ))
+  apply deduction_theorem
+  have h_neg_chi : (∅ ∪ {¬ θ}) ∪ {¬ χ} ⊢ ¬ χ :=
+    Deduction.premise (Set.mem_union_right _ rfl)
+  have h_neg_phi : (∅ ∪ {¬ θ}) ∪ {¬ χ} ⊢ ¬ φ := by
+    apply Deduction.modusPonens h_neg_chi
+    exact weakening (Set.empty_subset _) (contrapositive h₁)
+  have h_neg_psi : (∅ ∪ {¬ θ}) ∪ {¬ χ} ⊢ ¬ ψ := by
+    apply Deduction.modusPonens h_neg_chi
+    exact weakening (Set.empty_subset _) (contrapositive h₂)
+  have h_theta : (∅ ∪ {¬ θ}) ∪ {¬ χ} ⊢ θ :=
+    Deduction.modusPonens h_neg_psi
+      (Deduction.modusPonens h_neg_phi
+        (Deduction.axiom' (Axiom.conjIntro (¬ φ) (¬ ψ))))
+  have h_neg_theta : (∅ ∪ {¬ θ}) ∪ {¬ χ} ⊢ ¬ θ :=
+    Deduction.premise (Set.mem_union_left _ (Set.mem_union_right _ rfl))
+  exact Deduction.modusPonens
+    (Deduction.modusPonens h_neg_theta
+      (Deduction.modusPonens h_theta
+        (Deduction.axiom' (Axiom.conjIntro θ (¬ θ)))))
+    (Deduction.axiom' (Axiom.contradiction θ))
+
+----------------------------------------------------------------------------------------------------
+--- Modal Logic Lemmas
+----------------------------------------------------------------------------------------------------
+lemma diamond_monotonicity : ∀ {α : Program} {φ ψ : Formula},
+    (⊢ (φ → ψ)) →
+    (⊢ ((⟨α⟩ φ) → (⟨α⟩ ψ))) := by
+  intros α φ ψ h_deriv
   apply deduction_theorem
   simp only [Set.union_singleton, insert_empty_eq]
   have h_dual_φ : {⟨α⟩ φ} ⊢ (⟨α⟩ φ) ↔ ¬ ([α] ¬ φ) :=
@@ -285,6 +412,11 @@ lemma diamond_monotonicity (α : Program) {φ ψ : Formula} :
     iff_mpr h_dual_ψ
   exact Deduction.modusPonens h_neg_box_ψ h_from_box_ψ
 
+lemma box_monotonicity : ∀ {α : Program} {φ ψ : Formula},
+    (⊢ (φ → ψ)) →
+    (⊢ (([α] φ) → ([α] ψ))) :=
+  λ h => contrapositive (diamond_monotonicity (contrapositive h))
+
 lemma diamond_box_neg_inconsistent : ∀ {Γ : Set Formula} {α : Program} {φ : Formula},
     (Γ ⊢ ⟨α⟩ φ) →
     (Γ ⊢ [α] ¬ φ) →
@@ -303,6 +435,12 @@ lemma diamond_box_neg_inconsistent : ∀ {Γ : Set Formula} {α : Program} {φ :
   have h_contra : Γ ⊢ (([α] ¬ φ) ∧  ¬ ([α] ¬ φ)) → ⊥' :=
     Deduction.axiom' (Axiom.contradiction _)
   apply Deduction.modusPonens h_step₂ h_contra
+
+lemma neg_diamond_to_box_neg (α : Program) (φ : Formula) :
+    ⊢ ((¬ (⟨α⟩ φ)) →
+    ([α] ¬ φ)) := by
+  simp [box]
+  exact contrapositive (diamond_monotonicity (double_neg_elim φ))
 
 lemma box_of_derivation :
     ∀ {Γ : Set Formula} {α : Program} {Δ : Set Formula} {φ : Formula},
@@ -325,7 +463,44 @@ lemma box_of_derivation :
         (Set.empty_subset _)
         (Deduction.necessitation (Deduction.necessitation h_empty))
 
-lemma neg_diamond_to_box_neg (α : Program) (φ : Formula) :
-    ⊢ ((¬ (⟨α⟩ φ)) → ([α] ¬ φ)) := by
-  simp [box]
-  exact contrapositive (diamond_monotonicity α (double_neg_elim φ))
+----------------------------------------------------------------------------------------------------
+-- Finite Disjunction Lemmas
+----------------------------------------------------------------------------------------------------
+def list_disjunction : List Formula → Formula
+  | [] => ⊥'
+  | φ :: rest => φ ∨ list_disjunction rest
+
+lemma neg_list_to_disj : ∀ {Γ : List Formula} {Δ : Set Formula},
+    (Δ ∪ ↑(Γ.map Formula.neg).toFinset ⊢ ⊥') →
+    (Δ ⊢ list_disjunction Γ) := by
+  intro Γ
+  induction Γ with
+  | nil =>
+      intro Δ h
+      simp [list_disjunction, List.map, List.toFinset] at *
+      exact h
+  | cons φ rest ih =>
+      intro Δ h
+      simp only [list_disjunction]
+      have h' : (Δ ∪ {¬ φ}) ∪ ↑(rest.map Formula.neg).toFinset ⊢ ⊥' := by
+        apply weakening _ h
+        intro x hx
+        simp only [Set.mem_union, Finset.mem_coe, List.toFinset_cons, Finset.mem_insert,
+          List.mem_toFinset, List.mem_map] at hx ⊢
+        aesop
+      have h_rest : Δ ∪ {¬ φ} ⊢ list_disjunction rest := ih h'
+      exact disj_from_neg_imp h_rest
+
+lemma list_disjunction_box_imp : ∀ {α : Program} (Γ : List Formula),
+    ⊢ list_disjunction (Γ.map (box α)) →
+    ([α] (list_disjunction Γ)) := by
+  intro α Γ
+  induction Γ with
+  | nil =>
+      simp only [list_disjunction, List.map]
+      exact false_impl
+  | cons φ rest ih =>
+      simp only [list_disjunction, List.map]
+      apply disj_elim
+      · exact box_monotonicity disj_intro_left
+      · exact impl_chain ih (box_monotonicity disj_intro_right)

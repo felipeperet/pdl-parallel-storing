@@ -1,8 +1,7 @@
+import PdlParallelStoring.Semantics
 import PdlParallelStoring.AxiomaticSystem
-import PdlParallelStoring.Properties
 
-open Classical
-open Program
+open Classical Program
 
 lemma soundness_axiom_I (φ : Formula) :
     ⊨ φ → φ := by
