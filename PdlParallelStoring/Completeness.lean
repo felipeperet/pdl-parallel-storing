@@ -432,10 +432,79 @@ instance canonicalStandard : Standard canonicalModel where
     constructor
     · intro h_comp_rel
       let Γ_α : Set Formula := {φ | ([α] φ) ∈ Γ.val}
-      let S_β : Set Formula :=
-        {χ : Formula | ∃ ψ : Formula, And (χ = ¬ (box β ψ)) (ψ ∉ Δ.val)}
+      let S_β : Set Formula := {χ : Formula | ∃ ψ : Formula, (χ = ¬ ([β] ψ)) ∧ (ψ ∉ Δ.val)}
       have h_cons : IsConsistent (Γ_α ∪ S_β) := by
-        sorry
+        intro h_incons
+        obtain ⟨Δ', h_fin, h_sub, h_deriv⟩ := derivation_finite_support h_incons
+        let Δ'_α := {ψ ∈ Δ' | ψ ∈ Γ_α}
+        let Δ'_β := {ψ ∈ Δ' | ψ ∈ S_β}
+        have h_union : Δ'_α ∪ Δ'_β = Δ' := by
+          ext ψ
+          constructor
+          . intro h
+            cases h with
+            | inl h => exact h.1
+            | inr h => exact h.1
+          . intro h
+            have := h_sub h
+            cases this with
+            | inl h' => left; exact ⟨h, h'⟩
+            | inr h' => right; exact ⟨h, h'⟩
+        have h_deriv' : Δ'_α ∪ Δ'_β ⊢ ⊥' := h_union ▸ h_deriv
+        haveI := h_fin
+        have h_fin_set : Set.Finite Δ' := Set.toFinite Δ'
+        have h_fin_β : Set.Finite Δ'_β := h_fin_set.subset (λ x hx => hx.1)
+        let witness_of : Formula → Formula := λ χ =>
+          if h : χ ∈ S_β then Classical.choose h else ⊥'
+        have witness_of_spec (χ : Formula) (hχ : χ ∈ S_β) :
+            (χ = ¬ ([β] (witness_of χ))) ∧ (¬ (witness_of χ ∈ Δ.val)) := by
+          show (χ = ¬ ([β] (if h : χ ∈ S_β then Classical.choose h else ⊥')))
+               ∧ (¬ ((if h : χ ∈ S_β then Classical.choose h else ⊥') ∈ Δ.val))
+          rw [dif_pos hχ]
+          exact Classical.choose_spec hχ
+        let L := h_fin_β.toFinset.toList
+        have hL_to_mem (χ : Formula) (hχ : χ ∈ L) : χ ∈ Δ'_β :=
+          h_fin_β.mem_toFinset.mp (Finset.mem_toList.mp hχ)
+        have hL_of_mem (χ : Formula) (hχ : χ ∈ Δ'_β) : χ ∈ L :=
+          Finset.mem_toList.mpr (h_fin_β.mem_toFinset.mpr hχ)
+        have hL_S (χ : Formula) (hχ : χ ∈ L) : χ ∈ S_β := (hL_to_mem χ hχ).2
+        let witness_list : List Formula := L.map witness_of
+        let box_list : List Formula := witness_list.map (box β)
+        have h_neg_eq (χ : Formula) (hχ : χ ∈ L) :
+            χ = ¬ ([β] (witness_of χ)) :=
+          (witness_of_spec χ (hL_S χ hχ)).1
+        have h_mem_neg (χ : Formula) (hχ : χ ∈ L) :
+            χ ∈ (box_list.map Formula.neg) := by
+          rw [h_neg_eq χ hχ]
+          show (¬ ([β] (witness_of χ))) ∈
+            ((L.map witness_of).map (box β)).map Formula.neg
+          exact List.mem_map.mpr ⟨[β] (witness_of χ),
+            List.mem_map.mpr ⟨witness_of χ,
+              List.mem_map.mpr ⟨χ, hχ, rfl⟩, rfl⟩, rfl⟩
+        have h_sub_neg : Δ'_β ⊆ ↑(box_list.map Formula.neg).toFinset := by
+          intro χ hχ
+          simp only [Finset.mem_coe, List.mem_toFinset]
+          exact h_mem_neg χ (hL_of_mem χ hχ)
+        have h_deriv_neg : Δ'_α ∪ ↑(box_list.map Formula.neg).toFinset ⊢ ⊥' :=
+          weakening (Set.union_subset_union_right _ h_sub_neg) h_deriv'
+        have h_disj : Δ'_α ⊢ list_disjunction box_list := neg_list_to_disj h_deriv_neg
+        have h_box_disj : Δ'_α ⊢ [β] (list_disjunction witness_list) :=
+          Deduction.modusPonens h_disj
+            (weakening (Set.empty_subset _) (list_disjunction_box_imp witness_list))
+        have h_alpha_box : Γ.val ⊢ [α] ([β] (list_disjunction witness_list)) :=
+          box_of_derivation h_box_disj (λ ψ hψ => hψ.2)
+        have h_comp_box : ([(α ; β)] (list_disjunction witness_list)) ∈ Γ.val := by
+          apply mcs_is_closed
+          exact Deduction.modusPonens h_alpha_box
+            (iff_mpr (Deduction.axiom' (Axiom.modalComposition α β _)))
+        have h_disj_in : list_disjunction witness_list ∈ Δ.val :=
+          h_comp_rel h_comp_box
+        have h_witnesses_not_in : ∀ ψ ∈ witness_list, ψ ∉ Δ.val := by
+          intro ψ hψ
+          obtain ⟨χ, hχ_mem, hχ_eq⟩ := List.mem_map.mp hψ
+          rw [← hχ_eq]
+          exact (witness_of_spec χ (hL_S χ hχ_mem)).2
+        exact list_disjunction_not_in_mcs h_witnesses_not_in h_disj_in
       obtain ⟨mid, h_ext⟩ := lindenbaum h_cons
       exact ⟨mid,
         λ h => h_ext (Set.mem_union_left _ h),
@@ -459,11 +528,11 @@ instance canonicalStandard : Standard canonicalModel where
       by_contra h_neg
       have h_not_α : ¬ canonicalRelation α Γ Δ := λ h => h_neg (Or.inl h)
       have h_not_β : ¬ canonicalRelation β Γ Δ := λ h => h_neg (Or.inr h)
-      have hα_witness : ∃ φ : Formula, And (([α] φ) ∈ Γ.val) (φ ∉ Δ.val) := by
+      have hα_witness : ∃ φ : Formula, (([α] φ) ∈ Γ.val) ∧ (φ ∉ Δ.val) := by
         by_contra h_no
         push_neg at h_no
         exact h_not_α (λ {φ} h => h_no φ h)
-      have hβ_witness : ∃ φ : Formula, And (([β] φ) ∈ Γ.val) (φ ∉ Δ.val) := by
+      have hβ_witness : ∃ φ : Formula, (([β] φ) ∈ Γ.val) ∧ (φ ∉ Δ.val) := by
         by_contra h_no
         push_neg at h_no
         exact h_not_β (λ {φ} h => h_no φ h)
