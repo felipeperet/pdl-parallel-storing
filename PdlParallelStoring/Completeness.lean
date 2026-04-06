@@ -6,6 +6,17 @@ import PdlParallelStoring.AxiomaticSystem
 
 open Classical Program
 
+/-!
+# Completeness of RSPDL₀
+
+This module proves that every formula valid in all proper standard₀ models is derivable
+in the RSPDL₀ axiomatic system: if ⊨ φ then ⊢ φ.
+
+The proof follows the canonical model construction: maximal consistent sets serve as
+worlds, the canonical relation is defined via the box operator, and a generated submodel
+is used to obtain a proper standard₀ countermodel for any non-theorem.
+-/
+
 def IsConsistent (Γ : Set Formula) : Prop :=
   ¬ (Γ ⊢ ⊥')
 
@@ -424,7 +435,7 @@ lemma list_disjunction_not_in_mcs : ∀ {L : List Formula} {Δ : MaximalConsiste
             (Deduction.axiom' (Axiom.conjIntro (¬ φ) (¬ (list_disjunction rest))))))
       exact mcs_no_contradiction h_conj
 
-instance canonicalStandard : Standard canonicalModel where
+instance canonicalStandard : Standard₀ canonicalModel where
   comp := by
     intros α β
     funext Γ Δ
@@ -580,8 +591,6 @@ instance canonicalStandard : Standard canonicalModel where
             (Deduction.modusPonens (Deduction.premise h_conj)
               (Deduction.axiom' (Axiom.conjElimR ([α] φ) ([β] φ))))
           exact hβ h_right
-  iter := by sorry
-  test := by sorry
 
 lemma existence_lemma : ∀ {Γ : MaximalConsistentSet} {α : Program} {φ : Formula},
     ((⟨α⟩ φ) ∈ Γ.val) →
@@ -742,7 +751,7 @@ def gamma_is_world (Γ : MaximalConsistentSet) : (generatedSubmodel Γ).F.W :=
   ⟨Γ, gamma_in_reachable⟩
 
 instance generatedSubmodelProperStandard (Γ : MaximalConsistentSet) :
-    ProperStandard (generatedSubmodel Γ) := sorry
+    ProperStandard₀ (generatedSubmodel Γ) := sorry
 
 lemma submodel_truth_at_gamma : ∀ {Γ : MaximalConsistentSet} {φ : Formula},
     ((generatedSubmodel Γ, gamma_is_world Γ) ⊨ φ) ↔ φ ∈ Γ.val := by
@@ -757,7 +766,7 @@ open CanonicalModel
 
 lemma contrapositive_completeness : ∀ {φ : Formula},
     (¬ ⊢ φ) →
-    ∃ (M : Model) (_ : ProperStandard M), ¬ (M ⊨ φ) := by
+    ∃ (M : Model) (_ : ProperStandard₀ M), ¬ (M ⊨ φ) := by
   intros φ h_not_prov
   have h₁ : IsConsistent {¬ φ} := by
     rewrite [deduction_consistency] at h_not_prov

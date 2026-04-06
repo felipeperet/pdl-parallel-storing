@@ -3,6 +3,18 @@ import PdlParallelStoring.AxiomaticSystem
 
 open Classical Program
 
+/-!
+# Soundness of RSPDL₀
+
+This module proves that every formula derivable in the RSPDL₀ axiomatic system is valid
+in every proper standard₀ model: if ⊢ φ then ⊨ φ.
+
+RSPDL₀ is a fragment of PRSPDL without iteration (*), test (?), and parallel
+composition (‖). The axiomatic system includes propositional logic, classical logic,
+standard modal axioms for composition and choice, and axioms specific to the
+store/retrieve programs (s₁, s₂, r₁, r₂).
+-/
+
 lemma soundness_axiom_I (φ : Formula) :
     ⊨ φ → φ := by
   intros _ _ M _ _ w
@@ -97,7 +109,7 @@ lemma soundness_composition (α β : Program) (φ : Formula) :
     simp only [not_exists, not_and, Decidable.not_not] at hAll
     obtain ⟨s, hRws, t, hRst, hPhiNotHolds⟩ := hEx
     have hReach : M.F.R (α ; β) w t := by
-      rewrite [Standard.comp]
+      rewrite [Standard₀.comp]
       use s
     have hPhiHolds : (M, t) ⊨ φ := hAll t hReach
     exact hPhiNotHolds hPhiHolds
@@ -107,7 +119,7 @@ lemma soundness_composition (α β : Program) (φ : Formula) :
     simp only [not_exists, not_and, Decidable.not_not] at hAll
     obtain ⟨s, hRws, hPhiNotHolds⟩ := hEx
     have hComp : Relation.Comp (M.F.R α) (M.F.R β) w s := by
-      rewrite [← Standard.comp]
+      rewrite [← Standard₀.comp]
       exact hRws
     obtain ⟨t, hRwt, hRts⟩ := hComp
     have hPhiHolds : (M, s) ⊨ φ := hAll t hRwt s hRts
@@ -124,13 +136,13 @@ lemma soundness_choice (α β : Program) (φ : Formula) :
     have hAlphaBox : ∀ (x : M.F.W), M.F.R α w x → (M, x) ⊨ φ := by
       intros t hRwt
       apply hSat₁
-      rewrite [Standard.choice]
+      rewrite [Standard₀.choice]
       left
       exact hRwt
     obtain ⟨s, hRws, hPhiNotHolds⟩ := hSat₂ hAlphaBox
     have hPhiHolds : (M, s) ⊨ φ := by
       apply hSat₁
-      rewrite [Standard.choice]
+      rewrite [Standard₀.choice]
       right
       exact hRws
     exact hPhiNotHolds hPhiHolds
@@ -140,7 +152,7 @@ lemma soundness_choice (α β : Program) (φ : Formula) :
     simp only [not_exists, not_and, Decidable.not_not] at hAll
     obtain ⟨s, hRws, hPhiNotHolds⟩ := hEx
     obtain ⟨hAll₁, hAll₂⟩ := hAll
-    rewrite [Standard.choice] at hRws
+    rewrite [Standard₀.choice] at hRws
     cases hRws with
     | inl hAlpha =>
         have hPhiHolds : (M, s) ⊨ φ := hAll₁ s hAlpha
@@ -312,11 +324,11 @@ lemma soundness_unicity (φ : Formula) :
     obtain ⟨s, hRws, hSat₁⟩ := hSat₁
     obtain ⟨x, hRwx, hNotSat⟩ := hSat₂
     have hsEqw : s = w := by
-      rewrite [Standard.comp] at hRws
+      rewrite [Standard₀.comp] at hRws
       rewrite [s₁_comp_r₁] at hRws
       exact hRws.symm
     have hxEqw : x = w := by
-      rewrite [Standard.comp, s₁_comp_r₁] at hRwx
+      rewrite [Standard₀.comp, s₁_comp_r₁] at hRwx
       exact hRwx.symm
     rewrite [hsEqw] at hSat₁
     rewrite [hxEqw] at hNotSat
@@ -325,7 +337,7 @@ lemma soundness_unicity (φ : Formula) :
     simp only [satisfies, Decidable.not_not, not_exists, not_and] at hSat
     obtain ⟨hPos, hNeg⟩ := hSat
     have hReach : M.F.R (s₁ ; r₁) w w := by
-      rw [Standard.comp, s₁_comp_r₁]
+      rw [Standard₀.comp, s₁_comp_r₁]
     have hPhiHolds : (M, w) ⊨ φ := hPos w hReach
     have hPhiNotHolds : ¬ (M, w) ⊨ φ := hNeg w hReach
     exact hPhiNotHolds hPhiHolds
@@ -340,11 +352,11 @@ lemma soundness_unicity₂ (φ : Formula) :
     obtain ⟨s, hRws, hSat₁⟩ := hSat₁
     obtain ⟨x, hRwx, hNotSat⟩ := hSat₂
     have hsEqw : s = w := by
-      rewrite [Standard.comp] at hRws
+      rewrite [Standard₀.comp] at hRws
       rewrite [s₂_comp_r₂] at hRws
       exact hRws.symm
     have hxEqw : x = w := by
-      rewrite [Standard.comp, s₂_comp_r₂] at hRwx
+      rewrite [Standard₀.comp, s₂_comp_r₂] at hRwx
       exact hRwx.symm
     rewrite [hsEqw] at hSat₁
     rewrite [hxEqw] at hNotSat
@@ -353,7 +365,7 @@ lemma soundness_unicity₂ (φ : Formula) :
     simp only [satisfies, Decidable.not_not, not_exists, not_and] at hSat
     obtain ⟨hPos, hNeg⟩ := hSat
     have hReach : M.F.R (s₂ ; r₂) w w := by
-      rw [Standard.comp, s₂_comp_r₂]
+      rw [Standard₀.comp, s₂_comp_r₂]
     have hPhiHolds : (M, w) ⊨ φ := hPos w hReach
     have hPhiNotHolds : ¬ (M, w) ⊨ φ := hNeg w hReach
     exact hPhiNotHolds hPhiHolds
@@ -365,7 +377,7 @@ lemma soundness_store_restore_id (φ : Formula) :
   simp only
     [satisfies, not_exists, not_and, Decidable.not_not, not_forall, Classical.not_imp] at hSat
   have hReach : M.F.R (s₁ ; r₂) w w := by
-    rewrite [Standard.comp, s₁_comp_r₂]
+    rewrite [Standard₀.comp, s₁_comp_r₂]
     simp only [State.equiv.refl]
   have hPhiHolds : (M, w) ⊨ φ := hSat w hReach
   exact hPhiNotHolds hPhiHolds
@@ -378,7 +390,7 @@ lemma soundness_store_restore_diamond (φ : Formula) :
   simp only [not_exists, not_and] at hSat₂
   obtain ⟨s, hRws, hAll⟩ := hSat₂
   have hReach : M.F.R (s₁ ; r₂) s w := by
-    rewrite [Standard.comp, s₁_comp_r₂] at *
+    rewrite [Standard₀.comp, s₁_comp_r₂] at *
     exact State.equiv.symm hRws
   have hPhiNotHolds : ¬ (M, w) ⊨ φ := hAll w hReach
   exact hPhiNotHolds hPhiHolds
@@ -391,7 +403,7 @@ lemma soundness_store_restore_iterate (φ : Formula) :
   simp only [not_exists, not_and, Decidable.not_not] at hAll
   obtain ⟨s, hRws, t, hRst, hPhiNotHolds⟩ := hSat
   have hReach : M.F.R (s₁ ; r₂) w t := by
-    rewrite [Standard.comp, s₁_comp_r₂] at *
+    rewrite [Standard₀.comp, s₁_comp_r₂] at *
     simp only [State.equiv.trans hRws hRst]
   have hPhiHolds : (M, t) ⊨ φ := hAll t hReach
   exact hPhiNotHolds hPhiHolds

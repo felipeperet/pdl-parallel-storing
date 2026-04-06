@@ -1,6 +1,7 @@
 ----------------------------------------------------------------------------------------------------
 -- PRSPDL Syntax
 ----------------------------------------------------------------------------------------------------
+
 abbrev Literal := String
 
 mutual
@@ -33,39 +34,40 @@ notation:50 "⟨" α "⟩ " φ => diamond α φ
 
 infixl:80 " ; " => comp
 infixr:70 " ∪ " => choice
-postfix:max " ★" => iter
+postfix:max " *" => iter
 infixr:60 " ‖ " => parallel
 postfix:max " ?" => test
-
--- Formulae enumeration.
-axiom encode : Formula → Nat
-axiom decode : Nat → Option Formula
-axiom countable : ∀ {φ}, decode (encode φ) = some φ
 
 ----------------------------------------------------------------------------------------------------
 -- Derived Logical Operators
 ----------------------------------------------------------------------------------------------------
--- Def) ⊤ ≡ ¬⊥
+
+/-- ⊤ ≡ ¬ ⊥
+-/
 abbrev true : Formula :=
   ¬ ⊥'
 notation "⊤'" => true
 
--- Def) φ₁ ∨ φ₂ ≡ ¬ (¬φ₁ ∧ ¬φ₂)
+/-- φ₁ ∨ φ₂ ≡ ¬ (¬ φ₁ ∧ ¬ φ₂)
+-/
 abbrev disj (φ₁ φ₂ : Formula) : Formula :=
   ¬ ((¬ φ₁) ∧ (¬ φ₂))
 infixr:60 " ∨ " => disj
 
--- Def) φ₁ → φ₂ ≡ ¬ φ₁ ∨ φ₂
+/-- φ₁ → φ₂ ≡ ¬ φ₁ ∨ φ₂
+-/
 abbrev impl (φ₁ φ₂ : Formula) : Formula :=
   (¬ φ₁) ∨ φ₂
 infixr:55 " → " => impl
 
--- Def) φ₁ ↔ φ₂ ≡ (φ₁ → φ₂) ∧ (φ₂ → φ₁)
+/-- φ₁ ↔ φ₂ ≡ (φ₁ → φ₂) ∧ (φ₂ → φ₁)
+-/
 abbrev bicond (φ₁ φ₂ : Formula) : Formula :=
   (φ₁ → φ₂) ∧ (φ₂ → φ₁)
 infixr:55 " ↔ " => bicond
 
--- Def) [α] φ ≡ ¬ ⟨α⟩ ¬φ
+/-- [α] φ ≡ ¬ ⟨α⟩ ¬ φ
+-/
 abbrev box (α : Program) (φ : Formula) : Formula :=
   ¬ (⟨α⟩ (¬ φ))
 notation:50 "[" α "] " φ => box α φ
@@ -73,12 +75,22 @@ notation:50 "[" α "] " φ => box α φ
 ----------------------------------------------------------------------------------------------------
 -- Derived Control Structures
 ----------------------------------------------------------------------------------------------------
--- Def)   skip α
---      ≡ ⊤?
+
+/-- skip α ≡ ⊤ ?
+-/
 abbrev skip : Program :=
   ⊤' ?
 
--- Def)   fail α
---      ≡ ⊥?
+/-- fail α ≡ ⊥ ?
+-/
 abbrev fail : Program :=
   ⊥' ?
+
+----------------------------------------------------------------------------------------------------
+-- Formulae Enumeration
+----------------------------------------------------------------------------------------------------
+
+-- TODO: Remove axioms
+axiom encode : Formula → Nat
+axiom decode : Nat → Option Formula
+axiom countable : ∀ {φ}, decode (encode φ) = some φ

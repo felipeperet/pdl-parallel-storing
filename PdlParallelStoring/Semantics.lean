@@ -7,24 +7,34 @@ open Program
 ----------------------------------------------------------------------------------------------------
 -- PDL Semantics
 ----------------------------------------------------------------------------------------------------
--- Def) A frame is a pair F = (W, {Rπ : π is a program})
---      where:
---        - W is a non-empty set,
---        - Rπ ⊆ W × W , for each program π.
+
+/-- A frame is a pair F = (W, {Rπ : π is a program}) where:
+      - W is a non-empty set,
+      - Rπ ⊆ W × W, for each program π.
+-/
 structure Frame where
   W : Type
   [nonempty : Nonempty W]
   R : Program → W → W → Prop
 
--- Def) A model is a pair M = (F, V)
---      where:
---        - F is a frame,
---        - V : Φ → 2^W is a valuation function mapping atomic formulae into subsets of W.
+/-- A model is a pair M = (F, V) where:
+      - F is a frame,
+      - V : Φ → 2^W is a valuation function mapping atomic formulae into subsets of W.
+-/
 structure Model where
   F : Frame
   V : Literal → F.W → Prop
 
--- Def) Satisfaction relation.
+/-- Satisfaction relation.
+    (M, w) ⊨ φ holds when formula φ is true at world w in model M.
+
+    (M, w) ⊨ φ is inductively defined as follows:
+      - ⊥ is never satisfied,
+      - an atom p is satisfied iff w ∈ V(p),
+      - ¬ φ is satisfied iff φ is not satisfied,
+      - φ₁ ∧ φ₂ is satisfied iff both φ₁ and φ₂ are satisfied,
+      - ⟨α⟩ φ is satisfied iff there exists w' with R(α)(w, w') and (M, w') ⊨ φ.
+-/
 def satisfies (M : Model) (w : M.F.W) : Formula → Prop
   | Formula.false => False
   | Formula.atom ψ => M.V ψ w
@@ -34,21 +44,31 @@ def satisfies (M : Model) (w : M.F.W) : Formula → Prop
 
 notation:40 "(" κ ", " s ") " " ⊨ " φ => satisfies κ s φ
 
--- Def) A model is standard when it satisfies the following conditions:
-class Standard (M : Model) where
+/-- A model is standard₀ when composition and choice have their standard PDL semantics:
+      - R(α ; β) = R(α) ∘ R(β)  (relational composition),
+      - R(α ∪ β)(w₁, w₂) iff R(α)(w₁, w₂) ∨ R(β)(w₁, w₂).
+-/
+class Standard₀ (M : Model) where
   comp : ∀ {α β}, M.F.R (α ; β) = Relation.Comp (M.F.R α) (M.F.R β)
   choice : ∀ {α β}, M.F.R (α ∪ β) = λ w₁ w₂ => M.F.R α w₁ w₂ ∨ M.F.R β w₁ w₂
-  iter : ∀ {α}, M.F.R (α ★) = Relation.ReflTransGen (M.F.R α)
+
+/-- A model is standard when it extends Standard₀ with iteration and test:
+      - R(α *) = R(α) * (reflexive-transitive closure),
+      - R(φ ?)(w₁, w₂) iff w₁ = w₂ ∧ (M, w₁) ⊨ φ.
+-/
+class Standard (M : Model) extends Standard₀ M where
+  iter : ∀ {α}, M.F.R (α *) = Relation.ReflTransGen (M.F.R α)
   test : ∀ {φ}, M.F.R (φ ?) = λ w₁ w₂ => (w₁ = w₂) ∧ (satisfies M w₁ φ)
 
 ----------------------------------------------------------------------------------------------------
 -- PRSPDL Semantics
 ----------------------------------------------------------------------------------------------------
--- Def) A set of structured states is a triple (S, E, ⋆)
---      where:
---        - S is a non-empty set,
---        - E is an equivalence relation on S,
---        - ⋆ : S² → S is injective (s₁ ⋆ s₂ = t₁ ⋆ t₂ ↔ s₁ = t₁ ∧ s₂ = t₂).
+
+/-- A set of structured states is a triple (S, E, ⋆) where:
+      - S is a non-empty set,
+      - E is an equivalence relation on S,
+      - ⋆ : S × S → S is injective (s₁ ⋆ s₂ = t₁ ⋆ t₂ ↔ s₁ = t₁ ∧ s₂ = t₂).
+-/
 class State (S : Type) where
   [nonempty : Nonempty S]
   E : S → S → Prop
@@ -59,61 +79,87 @@ class State (S : Type) where
 infix:50 " ≈ " => State.E
 infixr:85 " ⋆ " => State.star
 
--- Def) A structured frame is a pair F = ((S, E ⋆), {Rπ : π is a program})
---      where:
---        - (S, E, ⋆) is a set of structured states,
---        - Rπ ⊆ E, for each program π,
---        - (S, {Rπ : π is a program}) is a frame.
+/-- A structured frame is a pair F = ((S, E, ⋆), {Rπ : π is a program}) where:
+      - (S, E, ⋆) is a set of structured states,
+      - Rπ ⊆ E for each program π (every transition relates equivalent states),
+      - (S, {Rπ}) forms a frame.
+-/
 class Structured (F : Frame) where
   [S : State F.W]
   respects_equiv : ∀ {π s t}, F.R π s t → s ≈ t
 
 instance {F : Frame} [SF : Structured F] : State F.W := SF.S
 
--- Def) A structured frame F is proper when it satisfies the following conditions:
+/-- A proper frame is a structured frame where the store/retrieve programs have their
+    intended semantics:
+      - R(s₁)(s', t') iff ∃ s t, s' = s ∧ t' = s ⋆ t  (store into first coordinate),
+      - R(s₂)(s', t') iff ∃ s t, s' = t ∧ t' = s ⋆ t  (store into second coordinate),
+      - R(r₁)(s', t') iff ∃ s t, s' = s ⋆ t ∧ t' = s  (retrieve first coordinate),
+      - R(r₂)(s', t') iff ∃ s t, s' = s ⋆ t ∧ t' = t  (retrieve second coordinate).
+-/
 class Proper (F : Frame) extends Structured F where
   s₁ : ∀ {s' t'}, F.R s₁ s' t' ↔ ∃ s t, (s' = s) ∧ t' = s ⋆ t
   s₂ : ∀ {s' t'}, F.R s₂ s' t' ↔ ∃ s t, (s' = t) ∧ t' = s ⋆ t
   r₁ : ∀ {s' t'}, F.R r₁ s' t' ↔ ∃ s t, (s' = s ⋆ t) ∧ t' = s
   r₂ : ∀ {s' t'}, F.R r₂ s' t' ↔ ∃ s t, (s' = s ⋆ t) ∧ t' = t
+
+/-- A proper frame with parallel composition. Extends a proper frame with:
+      - R(π₁ ‖ π₂)(s', t') iff
+        ∃ s₁ t₁ s₂ t₂, s' = s₁ ⋆ t₁ ∧ t' = s₂ ⋆ t₂ ∧ R(π₁)(s₁, s₂) ∧ R(π₂)(t₁, t₂).
+-/
+class ProperParallel (F : Frame) extends Proper F where
   parallel : ∀ {π₁ π₂ s' t'}, F.R (π₁ ‖ π₂) s' t' ↔
     ∃ s₁ t₁ s₂ t₂, (s' = s₁ ⋆ t₁) ∧ (t' = s₂ ⋆ t₂) ∧
     F.R π₁ s₁ s₂ ∧ F.R π₂ t₁ t₂
 
--- Def) An PRSPDL model is a proper standard model.
-class ProperStandard (M : Model) extends Standard M, Proper M.F
+/-- A proper standard₀ model: a proper frame equipped with a valuation, where composition
+    and choice have their standard PDL semantics. This is the semantic class for RSPDL₀.
+-/
+class ProperStandard₀ (M : Model) extends Standard₀ M, Proper M.F
 
--- Def) Global satisfaction.
---      That is, the formula is satisfied in every possible state of a proper standard model.
-def globallySatisfies (M : Model) [ProperStandard M] (φ : Formula) :=
+/-- A proper parallel standard model: a proper frame with parallel composition, equipped with
+    a valuation, where all program constructors (composition, choice, iteration, test, and
+    parallel composition) have their standard semantics. This is the semantic class for PRSPDL.
+-/
+class ProperParallelStandard (M : Model) extends Standard M, ProperParallel M.F
+
+/-- Global satisfaction: φ is globally satisfied in M when (M, w) ⊨ φ for every world w.
+-/
+def globallySatisfies (M : Model) [ProperStandard₀ M] (φ : Formula) :=
   ∀ {w : M.F.W}, (M, w) ⊨ φ
 
 notation:40 M " ⊨ " φ => globallySatisfies M φ
 
--- Def) Validity in a proper frame.
---      That is, a formula is satisfied in every possible model of a proper frame.
+/-- Validity in a proper frame: φ is valid in F when it is globally satisfied in every
+    proper standard₀ model whose underlying frame is F.
+-/
 def validInProperFrame (F : Frame) [Proper F] (φ : Formula) : Prop :=
-  ∀ {M : Model} [ProperStandard M], (M.F = F) → M ⊨ φ
+  ∀ {M : Model} [ProperStandard₀ M], (M.F = F) → M ⊨ φ
 
 notation:40 F " ⊨ " φ => validInProperFrame F φ
 
--- Def) Global validity.
---      That is, a formula is valid in every possible proper frame.
+/-- Global validity: φ is valid when it is valid in every proper frame.
+-/
 def valid (φ : Formula) : Prop :=
   ∀ {F : Frame} [Proper F], F ⊨ φ
 
 notation:40 "⊨ " φ => valid φ
 
--- Def) Semantic equivalence.
+/-- Semantic equivalence: φ₁ ≡ φ₂ when φ₁ ↔ φ₂ is valid.
+-/
 def semEquiv (φ₁ φ₂ : Formula) : Prop :=
   ⊨ (φ₁ ↔ φ₂)
 
 infixl:50 " ≡ " => semEquiv
 
 ----------------------------------------------------------------------------------------------------
--- Properties of Proper Structured Frames
+-- Properties of Proper Frames
 ----------------------------------------------------------------------------------------------------
--- Property I) Rs₁ ; Rr₁ = Id
+
+/-- Property I) R(s₁) ; R(r₁) = Id.
+
+    Storing into the first coordinate and then retrieving the first coordinate yields the
+    identity. -/
 @[simp]
 lemma s₁_comp_r₁ (F : Frame) [P : Proper F] : ∀ {s u : F.W},
     Relation.Comp (F.R s₁) (F.R r₁) s u ↔ s = u := by
@@ -135,7 +181,10 @@ lemma s₁_comp_r₁ (F : Frame) [P : Proper F] : ∀ {s u : F.W},
     use u
     rw [h_eq]
 
--- Property II) Rs₂ ; Rr₂ = Id
+/-- Property II) R(s₂) ; R(r₂) = Id.
+
+    Storing into the second coordinate and then retrieving the second coordinate yields the
+    identity. -/
 @[simp]
 lemma s₂_comp_r₂ (F : Frame) [P : Proper F] : ∀ {s u : F.W},
     Relation.Comp (F.R s₂) (F.R r₂) s u ↔ s = u := by
@@ -156,7 +205,10 @@ lemma s₂_comp_r₂ (F : Frame) [P : Proper F] : ∀ {s u : F.W},
     simp [P.s₂, P.r₂]
     constructor <;> use u <;> rw [h_eq]
 
--- Property III) Rs₁ ; Rr₂ = E
+/-- Property III) R(s₁) ; R(r₂) = E.
+
+    Storing into the first coordinate and then retrieving the second coordinate relates exactly
+    the E-equivalent states. -/
 @[simp]
 lemma s₁_comp_r₂ (F : Frame) [P : Proper F] : ∀ {s t : F.W},
     Relation.Comp (F.R s₁) (F.R r₂) s t ↔ s ≈ t := by
@@ -187,7 +239,9 @@ lemma s₁_comp_r₂ (F : Frame) [P : Proper F] : ∀ {s t : F.W},
     . use s, t
     . use s, t
 
--- Property IV) (Rr₁ ; Rs₁) ∩ (Rr₂ ; Rs₂) ⊆ Id
+/-- Property IV) (R(r₁) ; R(s₁)) ∩ (R(r₂) ; R(s₂)) ⊆ Id.
+
+    If two states are related by both retrieve-then-store compositions, they must be equal. -/
 @[simp]
 lemma r₁_s₁_inter_r₂_s₂ (F : Frame) [P : Proper F] : ∀ {s t : F.W},
     (Relation.Comp (F.R r₁) (F.R s₁) s t ∧ Relation.Comp (F.R r₂) (F.R s₂) s t) →
@@ -216,7 +270,9 @@ lemma r₁_s₁_inter_r₂_s₂ (F : Frame) [P : Proper F] : ∀ {s t : F.W},
   have t₁_eq_t₂ : t₁ = t₂ := by rw [t₁_eq_t₃, ← t₂_eq_t₃]
   rw [hs_eq₁, ht_eq₁, ← t₁_eq_t₂]
 
--- Property V) Rr₁ ; E = Rr₂ ; E
+/-- Property V) R(r₁) ; E = R(r₂) ; E.
+
+    Retrieving either coordinate and then stepping by equivalence yields the same relation. -/
 @[simp]
 lemma r₁_E_eq_r₂_E (F : Frame) [P : Proper F] : ∀ {s t : F.W},
     Relation.Comp (F.R r₁) State.E s t ↔ Relation.Comp (F.R r₂) State.E s t := by

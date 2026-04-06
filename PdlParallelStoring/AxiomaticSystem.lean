@@ -7,9 +7,10 @@ open Classical Program
 ----------------------------------------------------------------------------------------------------
 -- Axiomatic System for RSPDL₀ (Hilbert-style with context)
 ----------------------------------------------------------------------------------------------------
--- This is a fragment called RSPDL₀. In this fragment, we do not allow the use of the operators of
--- test (?), iteration (★) and parallel composition (‖).
 
+/- This is a fragment called RSPDL₀. In this fragment, we do not allow the use of the operators of
+   test (?), iteration (★) and parallel composition (‖).
+-/
 inductive Axiom : Formula → Prop where
   -- Propositional Logic Axioms
   | axiomI φ : Axiom (φ → φ)
@@ -53,7 +54,7 @@ inductive Axiom : Formula → Prop where
   -- Axiom 11
   | storeRestoreIterate φ : Axiom (([s₁ ; r₂] φ) → ([s₁ ; r₂] [s₁ ; r₂] φ))
 
--- Deduction system with context.
+/-- Deduction system with context. -/
 inductive Deduction : Set Formula → Formula → Prop where
   | premise : ∀ {Γ : Set Formula} {φ : Formula},
       (φ ∈ Γ) →
@@ -76,6 +77,7 @@ notation:40 "⊢ " φ => ∅ ⊢ φ
 ----------------------------------------------------------------------------------------------------
 -- Structural Properties
 ----------------------------------------------------------------------------------------------------
+
 lemma weakening : ∀ {Γ Δ : Set Formula} {φ : Formula},
     (Γ ⊆ Δ) →
     (Γ ⊢ φ) →
@@ -196,6 +198,7 @@ theorem cut_admissibility : ∀ {Γ : Set Formula} {φ ψ : Formula},
 ----------------------------------------------------------------------------------------------------
 --- Propositional Logic Lemmas
 ----------------------------------------------------------------------------------------------------
+
 lemma iff_mp {Γ : Set Formula} {φ ψ : Formula} :
     (Γ ⊢ (φ ↔ ψ)) →
     (Γ ⊢ (φ → ψ)) := by
@@ -384,6 +387,7 @@ lemma disj_elim : ∀ {φ ψ χ : Formula},
 ----------------------------------------------------------------------------------------------------
 --- Modal Logic Lemmas
 ----------------------------------------------------------------------------------------------------
+
 lemma diamond_monotonicity : ∀ {α : Program} {φ ψ : Formula},
     (⊢ (φ → ψ)) →
     (⊢ ((⟨α⟩ φ) → (⟨α⟩ ψ))) := by
@@ -466,6 +470,7 @@ lemma box_of_derivation :
 ----------------------------------------------------------------------------------------------------
 -- Finite Disjunction Lemmas
 ----------------------------------------------------------------------------------------------------
+
 def list_disjunction : List Formula → Formula
   | [] => ⊥'
   | φ :: rest => φ ∨ list_disjunction rest
