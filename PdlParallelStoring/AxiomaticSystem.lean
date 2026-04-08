@@ -54,7 +54,8 @@ inductive Axiom : Formula → Prop where
   -- Axiom 11
   | storeRestoreIterate φ : Axiom (([s₁ ; r₂] φ) → ([s₁ ; r₂] [s₁ ; r₂] φ))
 
-/-- Deduction system with context. -/
+/-- Deduction system with context.
+-/
 inductive Deduction : Set Formula → Formula → Prop where
   | premise : ∀ {Γ : Set Formula} {φ : Formula},
       (φ ∈ Γ) →

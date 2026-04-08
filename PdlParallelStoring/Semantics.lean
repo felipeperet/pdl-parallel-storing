@@ -109,8 +109,7 @@ class Proper (F : Frame) extends Structured F where
 -/
 class ProperParallel (F : Frame) extends Proper F where
   parallel : ∀ {π₁ π₂ s' t'}, F.R (π₁ ‖ π₂) s' t' ↔
-    ∃ s₁ t₁ s₂ t₂, (s' = s₁ ⋆ t₁) ∧ (t' = s₂ ⋆ t₂) ∧
-    F.R π₁ s₁ s₂ ∧ F.R π₂ t₁ t₂
+    ∃ s₁ t₁ s₂ t₂, (s' = s₁ ⋆ t₁) ∧ (t' = s₂ ⋆ t₂) ∧ F.R π₁ s₁ s₂ ∧ F.R π₂ t₁ t₂
 
 /-- A proper standard₀ model: a proper frame equipped with a valuation, where composition
     and choice have their standard PDL semantics. This is the semantic class for RSPDL₀.

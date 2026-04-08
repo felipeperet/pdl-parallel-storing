@@ -732,26 +732,59 @@ lemma truth_lemma : ∀ {φ : Formula} {Γ : canonicalModel.F.W},
   | r₂ => trivial
 
 def reachableWorlds (Γ : MaximalConsistentSet) : Set MaximalConsistentSet :=
-  {Δ | ∃ Ω, canonicalRelation r₁ Ω Γ ∧ canonicalRelation r₂ Ω Δ}
+  {Δ | canonicalRelation (s₁ ; r₂) Γ Δ}
 
-lemma gamma_in_reachable : ∀ {Γ : MaximalConsistentSet},
-    Γ ∈ reachableWorlds Γ := by
-  simp only [reachableWorlds, Set.mem_setOf_eq, canonicalRelation]
-  sorry
+lemma s1r2_refl : ∀ {Γ : MaximalConsistentSet},
+    canonicalRelation (s₁ ; r₂) Γ Γ := by
+  intro Γ φ h_in
+  exact mcs_is_closed (Deduction.modusPonens
+    (Deduction.premise h_in)
+    (Deduction.axiom' (Axiom.storeRestoreId φ)))
+
+lemma s1r2_symm : ∀ {Γ Δ : MaximalConsistentSet},
+    canonicalRelation (s₁ ; r₂) Γ Δ →
+    canonicalRelation (s₁ ; r₂) Δ Γ := by
+  intros Γ Δ h
+  simp [canonicalRelation] at *
+  intros φ h_in
+  by_contra h_not_prov
+  have h_neg_phi_in : (¬ φ) ∈ Γ.val := mcs_complete h_not_prov
+  have h_box_dia_in : ([s₁ ; r₂] ⟨s₁ ; r₂⟩ (¬ φ)) ∈ Γ.val := by
+    have h_neg_phi : Γ.val ⊢ ¬ φ := Deduction.premise h_neg_phi_in
+    have h_box_dia : Γ.val ⊢ [s₁ ; r₂] ⟨s₁ ; r₂⟩ (¬ φ) := by
+      apply Deduction.modusPonens h_neg_phi (Deduction.axiom' (Axiom.storeRestoreDiamond (¬ φ)))
+    exact mcs_is_closed h_box_dia
+  have h_dia : (⟨s₁ ; r₂⟩ ¬ φ) ∈ Δ.val := by
+    exact h h_box_dia_in
+  exact mcs_no_contradiction h_dia h_in
+
+lemma s1r2_trans : ∀ {Γ Δ Θ : MaximalConsistentSet},
+    canonicalRelation (s₁ ; r₂) Γ Δ →
+    canonicalRelation (s₁ ; r₂) Δ Θ →
+    canonicalRelation (s₁ ; r₂) Γ Θ := by
+  intros Γ Δ Θ h₁ h₂
+  simp only [canonicalRelation] at *
+  intros φ h_in
+  have h_iter : ([s₁ ; r₂] [s₁ ; r₂] φ) ∈ Γ.val := by
+    apply mcs_is_closed
+    exact Deduction.modusPonens
+      (Deduction.premise h_in) (Deduction.axiom' (Axiom.storeRestoreIterate φ))
+  have h_in_delta : ([s₁ ; r₂] φ) ∈ Δ.val := h₁ h_iter
+  exact h₂ h_in_delta
 
 def generatedSubmodel (Γ : MaximalConsistentSet) : Model where
   F := {
     W := reachableWorlds Γ
     R := λ α ⟨Δ, _⟩  ⟨Δ', _⟩ => canonicalRelation α Δ Δ'
-    nonempty := ⟨Γ, gamma_in_reachable⟩
+    nonempty := ⟨Γ, s1r2_refl⟩
   }
   V := λ lit ⟨Δ, _⟩ => canonicalValuation lit Δ
 
-def gamma_is_world (Γ : MaximalConsistentSet) : (generatedSubmodel Γ).F.W :=
-  ⟨Γ, gamma_in_reachable⟩
-
 instance generatedSubmodelProperStandard (Γ : MaximalConsistentSet) :
     ProperStandard₀ (generatedSubmodel Γ) := sorry
+
+def gamma_is_world (Γ : MaximalConsistentSet) : (generatedSubmodel Γ).F.W :=
+  ⟨Γ, s1r2_refl⟩
 
 lemma submodel_truth_at_gamma : ∀ {Γ : MaximalConsistentSet} {φ : Formula},
     ((generatedSubmodel Γ, gamma_is_world Γ) ⊨ φ) ↔ φ ∈ Γ.val := by
