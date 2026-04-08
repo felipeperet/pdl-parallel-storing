@@ -772,6 +772,92 @@ lemma s1r2_trans : ∀ {Γ Δ Θ : MaximalConsistentSet},
   have h_in_delta : ([s₁ ; r₂] φ) ∈ Δ.val := h₁ h_iter
   exact h₂ h_in_delta
 
+lemma r1_functional : ∀ {Γ Δ Ω : MaximalConsistentSet},
+    canonicalRelation r₁ Γ Δ →
+    canonicalRelation r₁ Γ Ω →
+    Δ = Ω := by
+  intros Γ Δ Ω h₁ h₂
+  simp only [canonicalRelation] at *
+  apply Subtype.ext
+  apply Set.ext
+  intros φ
+  constructor
+  . intros h_in
+    have h_dia : (⟨r₁⟩ φ) ∈ Γ.val := by
+      by_contra h_not
+      have h_neg_dia : (¬ (⟨r₁⟩ φ)) ∈ Γ.val := mcs_complete h_not
+      have h_box_neg : ([r₁] ¬ φ) ∈ Γ.val := by
+        apply mcs_is_closed
+        apply Deduction.modusPonens
+          (Deduction.premise h_neg_dia)
+          (weakening (Set.empty_subset Γ.val) (neg_diamond_to_box_neg r₁ φ))
+      exact (mcs_no_contradiction h_in) (h₁ h_box_neg)
+    have h_box : ([r₁] φ) ∈ Γ.val := by
+      apply mcs_is_closed
+      apply Deduction.modusPonens
+        (Deduction.premise h_dia)
+        (Deduction.axiom' (Axiom.functionalR₁ φ))
+    exact h₂ h_box
+  . intros h_in
+    have h_dia : (⟨r₁⟩ φ) ∈ Γ.val := by
+      by_contra h_not
+      have h_neg_dia : (¬ (⟨r₁⟩ φ)) ∈ Γ.val := mcs_complete h_not
+      have h_box_neg : ([r₁] ¬ φ) ∈ Γ.val := by
+        apply mcs_is_closed
+        apply Deduction.modusPonens
+          (Deduction.premise h_neg_dia)
+          (weakening (Set.empty_subset Γ.val) (neg_diamond_to_box_neg r₁ φ))
+      exact (mcs_no_contradiction h_in) (h₂ h_box_neg)
+    have h_box : ([r₁] φ) ∈ Γ.val := by
+      apply mcs_is_closed
+      apply Deduction.modusPonens
+        (Deduction.premise h_dia)
+        (Deduction.axiom' (Axiom.functionalR₁ φ))
+    exact h₁ h_box
+
+lemma r2_functional : ∀ {Γ Δ Ω : MaximalConsistentSet},
+    canonicalRelation r₂ Γ Δ →
+    canonicalRelation r₂ Γ Ω →
+    Δ = Ω := by
+  intros Γ Δ Ω h₁ h₂
+  simp only [canonicalRelation] at *
+  apply Subtype.ext
+  apply Set.ext
+  intros φ
+  constructor
+  . intros h_in
+    have h_dia : (⟨r₂⟩ φ) ∈ Γ.val := by
+      by_contra h_not
+      have h_neg_dia : (¬ (⟨r₂⟩ φ)) ∈ Γ.val := mcs_complete h_not
+      have h_box_neg : ([r₂] ¬ φ) ∈ Γ.val := by
+        apply mcs_is_closed
+        apply Deduction.modusPonens
+          (Deduction.premise h_neg_dia)
+          (weakening (Set.empty_subset Γ.val) (neg_diamond_to_box_neg r₂ φ))
+      exact (mcs_no_contradiction h_in) (h₁ h_box_neg)
+    have h_box : ([r₂] φ) ∈ Γ.val := by
+      apply mcs_is_closed
+      apply Deduction.modusPonens
+        (Deduction.premise h_dia)
+        (Deduction.axiom' (Axiom.functionalR₂ φ))
+    exact h₂ h_box
+  . intros h_in
+    have h_dia : (⟨r₂⟩ φ) ∈ Γ.val := by
+      by_contra h_not
+      have h_neg_dia : (¬ (⟨r₂⟩ φ)) ∈ Γ.val := mcs_complete h_not
+      have h_box_neg : ([r₂] ¬ φ) ∈ Γ.val := by
+        apply mcs_is_closed
+        apply Deduction.modusPonens
+          (Deduction.premise h_neg_dia)
+          (weakening (Set.empty_subset Γ.val) (neg_diamond_to_box_neg r₂ φ))
+      exact (mcs_no_contradiction h_in) (h₂ h_box_neg)
+    have h_box : ([r₂] φ) ∈ Γ.val := by
+      apply mcs_is_closed
+      apply Deduction.modusPonens
+        (Deduction.premise h_dia)
+        (Deduction.axiom' (Axiom.functionalR₂ φ))
+    exact h₁ h_box
+
 def generatedSubmodel (Γ : MaximalConsistentSet) : Model where
   F := {
     W := reachableWorlds Γ
