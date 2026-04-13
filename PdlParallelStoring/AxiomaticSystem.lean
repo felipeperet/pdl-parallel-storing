@@ -9,7 +9,7 @@ open Classical Program
 ----------------------------------------------------------------------------------------------------
 
 /- This is a fragment called RSPDL₀. In this fragment, we do not allow the use of the operators of
-   test (?), iteration (★) and parallel composition (‖).
+   test (?), iteration (*) and parallel composition (‖).
 -/
 inductive Axiom : Formula → Prop where
   -- Propositional Logic Axioms
@@ -98,6 +98,20 @@ lemma weakening : ∀ {Γ Δ : Set Formula} {φ : Formula},
   | necessitation h_empty _ =>
       apply Deduction.necessitation
       exact h_empty
+
+lemma derivation_substitution : ∀ {Γ Δ : Set Formula} {φ : Formula},
+    (Δ ⊢ φ) →
+    (∀ ψ ∈ Δ, Γ ⊢ ψ) →
+    Γ ⊢ φ := by
+  intros Γ Δ φ h_deriv h_in
+  induction h_deriv with
+  | @premise Ω ψ h_in₂ => exact h_in ψ h_in₂
+  | @axiom' Ω ψ h_ax => exact Deduction.axiom' h_ax
+  | @modusPonens Ω ψ χ h_deriv h_step ih₁ ih₂  =>
+      have h_deriv' : Γ ⊢ ψ := ih₁ h_in
+      have h_step' : Γ ⊢ ψ → χ := ih₂ h_in
+      exact Deduction.modusPonens h_deriv' h_step'
+  | @necessitation Ω α ψ h_empty_deriv ih => exact Deduction.necessitation h_empty_deriv
 
 lemma monotonicity : ∀ {Γ Δ : Set Formula} {φ : Formula},
     (Γ ⊢ φ) →
@@ -469,18 +483,41 @@ lemma box_of_derivation :
         (Deduction.necessitation (Deduction.necessitation h_empty))
 
 ----------------------------------------------------------------------------------------------------
--- Finite Disjunction Lemmas
+-- Connective Lemmas
 ----------------------------------------------------------------------------------------------------
+
+def list_conjunction : List Formula → Formula
+  | [] => ⊤'
+  | φ :: rest => φ ∧ (list_conjunction rest)
+
+lemma list_conjunction_elim : ∀ {φ : Formula} {L : List Formula},
+    (φ ∈ L) →
+    ∅ ⊢ list_conjunction L → φ := by
+  intros φ L h_in
+  induction L with
+  | nil =>
+      by_contra
+      exact (List.not_mem_nil h_in)
+  | cons ψ tail ih =>
+      have h_either : (φ = ψ) ∨ (φ ∈ tail) := List.mem_cons.mp h_in
+      cases h_either with
+      | inl h_eq =>
+          subst h_eq
+          exact Deduction.axiom' (Axiom.conjElimL φ (list_conjunction tail))
+      | inr h_in' =>
+          have h_empty_deriv : ∅ ⊢ list_conjunction tail → φ := ih h_in'
+          exact
+            impl_chain (Deduction.axiom' (Axiom.conjElimR ψ (list_conjunction tail))) h_empty_deriv
 
 def list_disjunction : List Formula → Formula
   | [] => ⊥'
   | φ :: rest => φ ∨ list_disjunction rest
 
-lemma neg_list_to_disj : ∀ {Γ : List Formula} {Δ : Set Formula},
-    (Δ ∪ ↑(Γ.map Formula.neg).toFinset ⊢ ⊥') →
-    (Δ ⊢ list_disjunction Γ) := by
-  intro Γ
-  induction Γ with
+lemma neg_list_to_disj : ∀ {L : List Formula} {Δ : Set Formula},
+    (Δ ∪ ↑(L.map Formula.neg).toFinset ⊢ ⊥') →
+    (Δ ⊢ list_disjunction L) := by
+  intro L
+  induction L with
   | nil =>
       intro Δ h
       simp [list_disjunction, List.map, List.toFinset] at *
@@ -497,11 +534,11 @@ lemma neg_list_to_disj : ∀ {Γ : List Formula} {Δ : Set Formula},
       have h_rest : Δ ∪ {¬ φ} ⊢ list_disjunction rest := ih h'
       exact disj_from_neg_imp h_rest
 
-lemma list_disjunction_box_imp : ∀ {α : Program} (Γ : List Formula),
-    ⊢ list_disjunction (Γ.map (box α)) →
-    ([α] (list_disjunction Γ)) := by
-  intro α Γ
-  induction Γ with
+lemma list_disjunction_box_imp : ∀ {α : Program} (L : List Formula),
+    ⊢ list_disjunction (L.map (box α)) →
+    ([α] (list_disjunction L)) := by
+  intro α L
+  induction L with
   | nil =>
       simp only [list_disjunction, List.map]
       exact false_impl

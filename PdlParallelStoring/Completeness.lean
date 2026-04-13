@@ -128,6 +128,27 @@ lemma mcs_is_closed : ∀ {Γ : MaximalConsistentSet} {φ : Formula},
   have h_cut : Γ.val ⊢ ⊥' := cut_admissibility h_deriv h_phi_incons
   exact h_cons h_cut
 
+lemma false_not_in_mcs : ∀ {Γ : MaximalConsistentSet}, Formula.false ∉ Γ.val := by
+  intro Γ h
+  exact Γ.property.1 (Deduction.premise h)
+
+lemma list_conjunction_in_mcs : ∀ {Γ : MaximalConsistentSet} {L : List Formula},
+    (∀ φ ∈ L, φ ∈ Γ.val) →
+    list_conjunction L ∈ Γ.val := by
+  intros Γ L h
+  induction L with
+  | nil =>
+      simp only [list_conjunction]
+      exact mcs_complete false_not_in_mcs
+  | cons ψ tail ih =>
+      simp only [list_conjunction]
+      have hψ : ψ ∈ Γ.val := h ψ (.head tail)
+      have htail : list_conjunction tail ∈ Γ.val := ih (fun φ hφ => h φ (List.mem_cons_of_mem ψ hφ))
+      exact mcs_is_closed
+        (Deduction.modusPonens (Deduction.premise htail)
+          (Deduction.modusPonens (Deduction.premise hψ)
+            (Deduction.axiom' (Axiom.conjIntro ψ (list_conjunction tail)))))
+
 namespace Lindenbaum
 
 def insert : Option Formula → Set Formula → Set Formula
@@ -406,10 +427,6 @@ def canonicalValuation (lit : Literal) (Γ : MaximalConsistentSet) : Prop :=
 def canonicalModel : Model where
   F := canonicalFrame
   V := canonicalValuation
-
-lemma false_not_in_mcs : ∀ {Γ : MaximalConsistentSet}, Formula.false ∉ Γ.val := by
-  intro Γ h
-  exact Γ.property.1 (Deduction.premise h)
 
 lemma list_disjunction_not_in_mcs : ∀ {L : List Formula} {Δ : MaximalConsistentSet},
     (∀ ψ ∈ L, ψ ∉ Δ.val) →
@@ -734,45 +751,7 @@ lemma truth_lemma : ∀ {φ : Formula} {Γ : canonicalModel.F.W},
 def reachableWorlds (Γ : MaximalConsistentSet) : Set MaximalConsistentSet :=
   {Δ | canonicalRelation (s₁ ; r₂) Γ Δ}
 
-lemma s1r2_refl : ∀ {Γ : MaximalConsistentSet},
-    canonicalRelation (s₁ ; r₂) Γ Γ := by
-  intro Γ φ h_in
-  exact mcs_is_closed (Deduction.modusPonens
-    (Deduction.premise h_in)
-    (Deduction.axiom' (Axiom.storeRestoreId φ)))
-
-lemma s1r2_symm : ∀ {Γ Δ : MaximalConsistentSet},
-    canonicalRelation (s₁ ; r₂) Γ Δ →
-    canonicalRelation (s₁ ; r₂) Δ Γ := by
-  intros Γ Δ h
-  simp [canonicalRelation] at *
-  intros φ h_in
-  by_contra h_not_prov
-  have h_neg_phi_in : (¬ φ) ∈ Γ.val := mcs_complete h_not_prov
-  have h_box_dia_in : ([s₁ ; r₂] ⟨s₁ ; r₂⟩ (¬ φ)) ∈ Γ.val := by
-    have h_neg_phi : Γ.val ⊢ ¬ φ := Deduction.premise h_neg_phi_in
-    have h_box_dia : Γ.val ⊢ [s₁ ; r₂] ⟨s₁ ; r₂⟩ (¬ φ) := by
-      apply Deduction.modusPonens h_neg_phi (Deduction.axiom' (Axiom.storeRestoreDiamond (¬ φ)))
-    exact mcs_is_closed h_box_dia
-  have h_dia : (⟨s₁ ; r₂⟩ ¬ φ) ∈ Δ.val := by
-    exact h h_box_dia_in
-  exact mcs_no_contradiction h_dia h_in
-
-lemma s1r2_trans : ∀ {Γ Δ Θ : MaximalConsistentSet},
-    canonicalRelation (s₁ ; r₂) Γ Δ →
-    canonicalRelation (s₁ ; r₂) Δ Θ →
-    canonicalRelation (s₁ ; r₂) Γ Θ := by
-  intros Γ Δ Θ h₁ h₂
-  simp only [canonicalRelation] at *
-  intros φ h_in
-  have h_iter : ([s₁ ; r₂] [s₁ ; r₂] φ) ∈ Γ.val := by
-    apply mcs_is_closed
-    exact Deduction.modusPonens
-      (Deduction.premise h_in) (Deduction.axiom' (Axiom.storeRestoreIterate φ))
-  have h_in_delta : ([s₁ ; r₂] φ) ∈ Δ.val := h₁ h_iter
-  exact h₂ h_in_delta
-
-lemma r1_functional : ∀ {Γ Δ Ω : MaximalConsistentSet},
+lemma r₁_functional : ∀ {Γ Δ Ω : MaximalConsistentSet},
     canonicalRelation r₁ Γ Δ →
     canonicalRelation r₁ Γ Ω →
     Δ = Ω := by
@@ -815,7 +794,7 @@ lemma r1_functional : ∀ {Γ Δ Ω : MaximalConsistentSet},
         (Deduction.axiom' (Axiom.functionalR₁ φ))
     exact h₁ h_box
 
-lemma r2_functional : ∀ {Γ Δ Ω : MaximalConsistentSet},
+lemma r₂_functional : ∀ {Γ Δ Ω : MaximalConsistentSet},
     canonicalRelation r₂ Γ Δ →
     canonicalRelation r₂ Γ Ω →
     Δ = Ω := by
@@ -858,11 +837,178 @@ lemma r2_functional : ∀ {Γ Δ Ω : MaximalConsistentSet},
         (Deduction.axiom' (Axiom.functionalR₂ φ))
     exact h₁ h_box
 
+lemma s₁r₂_refl : ∀ {Γ : MaximalConsistentSet},
+    canonicalRelation (s₁ ; r₂) Γ Γ := by
+  intro Γ φ h_in
+  exact mcs_is_closed (Deduction.modusPonens
+    (Deduction.premise h_in)
+    (Deduction.axiom' (Axiom.storeRestoreId φ)))
+
+lemma s₁r₂_symm : ∀ {Γ Δ : MaximalConsistentSet},
+    canonicalRelation (s₁ ; r₂) Γ Δ →
+    canonicalRelation (s₁ ; r₂) Δ Γ := by
+  intros Γ Δ h
+  simp [canonicalRelation] at *
+  intros φ h_in
+  by_contra h_not_prov
+  have h_neg_phi_in : (¬ φ) ∈ Γ.val := mcs_complete h_not_prov
+  have h_box_dia_in : ([s₁ ; r₂] ⟨s₁ ; r₂⟩ (¬ φ)) ∈ Γ.val := by
+    have h_neg_phi : Γ.val ⊢ ¬ φ := Deduction.premise h_neg_phi_in
+    have h_box_dia : Γ.val ⊢ [s₁ ; r₂] ⟨s₁ ; r₂⟩ (¬ φ) := by
+      apply Deduction.modusPonens h_neg_phi (Deduction.axiom' (Axiom.storeRestoreDiamond (¬ φ)))
+    exact mcs_is_closed h_box_dia
+  have h_dia : (⟨s₁ ; r₂⟩ ¬ φ) ∈ Δ.val := by
+    exact h h_box_dia_in
+  exact mcs_no_contradiction h_dia h_in
+
+lemma s₁r₂_trans : ∀ {Γ Δ Θ : MaximalConsistentSet},
+    canonicalRelation (s₁ ; r₂) Γ Δ →
+    canonicalRelation (s₁ ; r₂) Δ Θ →
+    canonicalRelation (s₁ ; r₂) Γ Θ := by
+  intros Γ Δ Θ h₁ h₂
+  simp only [canonicalRelation] at *
+  intros φ h_in
+  have h_iter : ([s₁ ; r₂] [s₁ ; r₂] φ) ∈ Γ.val := by
+    apply mcs_is_closed
+    exact Deduction.modusPonens
+      (Deduction.premise h_in) (Deduction.axiom' (Axiom.storeRestoreIterate φ))
+  have h_in_delta : ([s₁ ; r₂] φ) ∈ Δ.val := h₁ h_iter
+  exact h₂ h_in_delta
+
+lemma star_exists : ∀ {Γ Δ₁ Δ₂ : MaximalConsistentSet},
+    (Δ₁ ∈ reachableWorlds Γ) →
+    (Δ₂ ∈ reachableWorlds Γ) →
+    ∃ Ω, canonicalRelation r₁ Ω Δ₁ ∧ canonicalRelation r₂ Ω Δ₂ := by
+  intros Γ Δ₁ Δ₂ h_in₁ h_in₂
+  simp only [reachableWorlds] at h_in₁ h_in₂
+  let S : Set Formula := {⟨r₁⟩ φ | φ ∈ Δ₁.val} ∪ {⟨r₂⟩ φ | φ ∈ Δ₂.val}
+  have h_cons : IsConsistent S := by
+    intros h_incons
+    obtain ⟨Δ, h_fin, h_sub, h_deriv⟩ := derivation_finite_support h_incons
+    let r₁_formulas := {φ | (⟨r₁⟩ φ) ∈ Δ}
+    let r₂_formulas := {ψ | (⟨r₂⟩ ψ) ∈ Δ}
+    have h_r₁_finite : (r₁_formulas : Set Formula).Finite := by
+      have hΔ_fin : Set.Finite Δ := Set.finite_coe_iff.mpr h_fin
+      have : r₁_formulas = (λ φ => (⟨r₁⟩ φ)) ⁻¹' Δ := rfl
+      rw [this]
+      apply Set.Finite.preimage _ hΔ_fin
+      intro a _ b _ h
+      exact (Formula.diamond.inj h).2
+    have h_r₂_finite : (r₂_formulas : Set Formula).Finite := by
+      have hΔ_fin : Set.Finite Δ := Set.finite_coe_iff.mpr h_fin
+      have : r₂_formulas = (λ ψ => (⟨r₂⟩ ψ)) ⁻¹' Δ := rfl
+      rw [this]
+      apply Set.Finite.preimage _ hΔ_fin
+      intro a _ b _ h
+      exact (Formula.diamond.inj h).2
+    let L₁_list := h_r₁_finite.toFinset.toList
+    let L₂_list := h_r₂_finite.toFinset.toList
+    let Φ := list_conjunction L₁_list
+    let Ψ := list_conjunction L₂_list
+    have h_colapsed_deriv : {⟨r₁⟩ Φ, ⟨r₂⟩ Ψ} ⊢ ⊥' := by
+      have h_in_Δ : ∀ (χ : Formula), (χ ∈ Δ) → {⟨r₁⟩ Φ, ⟨r₂⟩ Ψ} ⊢ χ := by
+        intros χ χ_in_Δ
+        have χ_in_S : χ ∈ S := by exact h_sub χ_in_Δ
+        unfold S at χ_in_S
+        rcases χ_in_S with ⟨φ, hφ_in, hχ_eq⟩ | ⟨ψ, hψ_in, hχ_eq⟩
+        . subst hχ_eq
+          have hφ_in_r₁ : φ ∈ r₁_formulas := χ_in_Δ
+          have hφ_in_list : φ ∈ L₁_list :=
+            Finset.mem_toList.mpr (h_r₁_finite.mem_toFinset.mpr hφ_in_r₁)
+          have h_impl : ⊢ Φ → φ := list_conjunction_elim hφ_in_list
+          have h_dia : ⊢ (⟨r₁⟩ Φ) → (⟨r₁⟩ φ) := diamond_monotonicity h_impl
+          exact
+            Deduction.modusPonens
+              (Deduction.premise (by simp))
+              (weakening (Set.empty_subset _) h_dia)
+        . subst hχ_eq
+          have hψ_in_r₂ : ψ ∈ r₂_formulas := χ_in_Δ
+          have hψ_in_list : ψ ∈ L₂_list :=
+            Finset.mem_toList.mpr (h_r₂_finite.mem_toFinset.mpr hψ_in_r₂)
+          have h_impl : ⊢ Ψ → ψ := list_conjunction_elim hψ_in_list
+          have h_dia : ⊢ (⟨r₂⟩ Ψ) → (⟨r₂⟩ ψ) := diamond_monotonicity h_impl
+          exact
+            Deduction.modusPonens
+              (Deduction.premise (by simp))
+              (weakening (Set.empty_subset _) h_dia)
+      exact derivation_substitution h_deriv h_in_Δ
+    have h_step₁ : {⟨r₁⟩ Φ} ⊢ (⟨r₂⟩ Ψ) → ⊥' := by
+      have h_empty_union : ({⟨r₁⟩ Φ} ∪ {⟨r₂⟩ Ψ }) ⊢ ⊥' := by
+        apply weakening
+        . simp only [Set.union_singleton]
+          exact Set.Subset.rfl
+        . apply weakening _ h_colapsed_deriv
+          intro χ h_in
+          cases h_in with
+          | inl h =>
+              right
+              exact h
+          | inr h =>
+              left
+              exact h
+      apply deduction_theorem h_empty_union
+    have h_step₂ : ∅ ⊢ (⟨r₁⟩ Φ) → (⟨r₂⟩ Ψ) → ⊥' := by
+      apply deduction_theorem
+      apply weakening (by simp) h_step₁
+    have h_step₃ : ∅ ⊢ (⟨r₁⟩ Φ) → ¬ (⟨r₂⟩ Ψ) :=
+      impl_chain h_step₂ (Deduction.axiom' (Axiom.negIntro (⟨r₂⟩ Ψ)))
+    have h_step₄ : ∅ ⊢ (⟨r₁⟩ Φ) → ([r₂] ¬ Ψ) := impl_chain h_step₃ (neg_diamond_to_box_neg r₂ Ψ)
+    have h_step₅ : ∅ ⊢ ([s₁] ⟨r₁⟩ Φ) → ([s₁] [r₂] ¬ Ψ) := box_monotonicity (h_step₄)
+    have h_Φ_in_Δ₁ : Φ ∈ Δ₁.val := by
+      apply list_conjunction_in_mcs
+      intro φ hφ_in_list
+      have hφ_in_r₁ : φ ∈ r₁_formulas :=
+        h_r₁_finite.mem_toFinset.mp (Finset.mem_toList.mp hφ_in_list)
+      have h_dia_in_Δ : (⟨r₁⟩ φ) ∈ Δ := hφ_in_r₁
+      have h_dia_in_S : (⟨r₁⟩ φ) ∈ S := h_sub h_dia_in_Δ
+      unfold S at h_dia_in_S
+      rcases h_dia_in_S with ⟨ψ, hψ_in, hψ_eq⟩ | ⟨ψ, hψ_in, hψ_eq⟩
+      . exact (Formula.diamond.inj hψ_eq).2 ▸ hψ_in
+      . exact absurd hψ_eq (by simp [Formula.diamond.injEq])
+    have h_s₁_r₁_Φ : ([s₁] ⟨r₁⟩ Φ) ∈ Δ₁.val := mcs_is_closed
+      (Deduction.modusPonens (Deduction.premise h_Φ_in_Δ₁)
+        (Deduction.axiom' (Axiom.temporalForward Φ)))
+    have h_s₁_r₂_neg_Ψ : ([s₁] [r₂] ¬ Ψ) ∈ Δ₁.val := mcs_is_closed
+      (Deduction.modusPonens (Deduction.premise h_s₁_r₁_Φ)
+        (weakening (Set.empty_subset _) h_step₅))
+    have h_s₁r₂_neg_Ψ : ([s₁ ; r₂] ¬ Ψ) ∈ Δ₁.val := mcs_is_closed
+      (Deduction.modusPonens (Deduction.premise h_s₁_r₂_neg_Ψ)
+        (iff_mpr (Deduction.axiom' (Axiom.modalComposition s₁ r₂ (¬ Ψ)))))
+    have h_Δ₁_Δ₂ : canonicalRelation (s₁ ; r₂) Δ₁ Δ₂ :=
+      s₁r₂_trans (s₁r₂_symm h_in₁) h_in₂
+    have h_neg_Ψ_in_Δ₂ : (¬ Ψ) ∈ Δ₂.val := h_Δ₁_Δ₂ h_s₁r₂_neg_Ψ
+    have h_Ψ_in_Δ₂ : Ψ ∈ Δ₂.val := by
+      apply list_conjunction_in_mcs
+      intro ψ hψ_in_list
+      have hψ_in_r₂ : ψ ∈ r₂_formulas :=
+        h_r₂_finite.mem_toFinset.mp (Finset.mem_toList.mp hψ_in_list)
+      have h_dia_in_Δ : (⟨r₂⟩ ψ) ∈ Δ := hψ_in_r₂
+      have h_dia_in_S : (⟨r₂⟩ ψ) ∈ S := h_sub h_dia_in_Δ
+      unfold S at h_dia_in_S
+      rcases h_dia_in_S with ⟨χ, hχ_in, hχ_eq⟩ | ⟨χ, hχ_in, hχ_eq⟩
+      . exact absurd hχ_eq (by simp [Formula.diamond.injEq])
+      . exact (Formula.diamond.inj hχ_eq).2 ▸ hχ_in
+    exact mcs_no_contradiction h_Ψ_in_Δ₂ h_neg_Ψ_in_Δ₂
+  obtain ⟨Ω, h_ext⟩ := Lindenbaum.lindenbaum h_cons
+  exact ⟨Ω,
+    fun {φ} h_box => by
+      by_contra h_not
+      have h_neg : (¬ φ) ∈ Δ₁.val := mcs_complete h_not
+      have h_dia : (⟨r₁⟩ (¬ φ)) ∈ Ω.val :=
+        h_ext (Set.mem_union_left _ ⟨¬ φ, h_neg, rfl⟩)
+      exact mcs_no_contradiction h_dia h_box,
+    fun {φ} h_box => by
+      by_contra h_not
+      have h_neg : (¬ φ) ∈ Δ₂.val := mcs_complete h_not
+      have h_dia : (⟨r₂⟩ (¬ φ)) ∈ Ω.val :=
+        h_ext (Set.mem_union_right _ ⟨¬ φ, h_neg, rfl⟩)
+      exact mcs_no_contradiction h_dia h_box⟩
+
 def generatedSubmodel (Γ : MaximalConsistentSet) : Model where
   F := {
     W := reachableWorlds Γ
     R := λ α ⟨Δ, _⟩  ⟨Δ', _⟩ => canonicalRelation α Δ Δ'
-    nonempty := ⟨Γ, s1r2_refl⟩
+    nonempty := ⟨Γ, s₁r₂_refl⟩
   }
   V := λ lit ⟨Δ, _⟩ => canonicalValuation lit Δ
 
@@ -870,7 +1016,7 @@ instance generatedSubmodelProperStandard (Γ : MaximalConsistentSet) :
     ProperStandard₀ (generatedSubmodel Γ) := sorry
 
 def gamma_is_world (Γ : MaximalConsistentSet) : (generatedSubmodel Γ).F.W :=
-  ⟨Γ, s1r2_refl⟩
+  ⟨Γ, s₁r₂_refl⟩
 
 lemma submodel_truth_at_gamma : ∀ {Γ : MaximalConsistentSet} {φ : Formula},
     ((generatedSubmodel Γ, gamma_is_world Γ) ⊨ φ) ↔ φ ∈ Γ.val := by
