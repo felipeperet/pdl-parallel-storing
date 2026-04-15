@@ -32,14 +32,14 @@ structure Model where
       - ⊥ is never satisfied,
       - an atom p is satisfied iff w ∈ V(p),
       - ¬ φ is satisfied iff φ is not satisfied,
-      - φ₁ ∧ φ₂ is satisfied iff both φ₁ and φ₂ are satisfied,
+      - φ ∧ ψ is satisfied iff both φ and ψ are satisfied,
       - ⟨α⟩ φ is satisfied iff there exists w' with R(α)(w, w') and (M, w') ⊨ φ.
 -/
 def satisfies (M : Model) (w : M.F.W) : Formula → Prop
   | Formula.false => False
-  | Formula.atom ψ => M.V ψ w
+  | Formula.atom p => M.V p w
   | Formula.neg φ => ¬ satisfies M w φ
-  | Formula.conj φ₁ φ₂ => satisfies M w φ₁ ∧ satisfies M w φ₂
+  | Formula.conj φ ψ => satisfies M w φ ∧ satisfies M w ψ
   | Formula.diamond α φ => ∃ w', M.F.R α w w' ∧ satisfies M w' φ
 
 notation:40 "(" κ ", " s ") " " ⊨ " φ => satisfies κ s φ
@@ -68,9 +68,9 @@ class Standard (M : Model) extends Standard₀ M where
       - S is a non-empty set,
       - E is an equivalence relation on S,
       - ⋆ : S × S → 𝒫(S) associates each pair of states with a set of possible combinations,
-      - ⋆ is separated: if z ∈ x ⋆ y and z ∈ x' ⋆ y', then x = x' and y = y'
+      - ⋆ is separated: if t ∈ w ⋆ s and t ∈ w' ⋆ s', then w = w' and s = s'
                         (each state has at most one decomposition),
-      - ⋆ is serial: for all x y, there exists z ∈ x ⋆ y
+      - ⋆ is serial: for all w s, there exists t ∈ w ⋆ s
                      (every pair of states can be combined).
 -/
 class State (S : Type) where
@@ -78,8 +78,8 @@ class State (S : Type) where
   E : S → S → Prop
   [equiv : Equivalence E]
   star : S → S → Set S
-  [separated : ∀ {z x y x' y'}, (z ∈ star x y) → (z ∈ star x' y') → (x = x') ∧ y = y']
-  [serial : ∀ (x y : S), ∃ z, z ∈ star x y]
+  [separated : ∀ {t w s w' s'}, (t ∈ star w s) → (t ∈ star w' s') → (w = w') ∧ s = s']
+  [serial : ∀ (w s : S), ∃ t, t ∈ star w s]
 
 infix:50 " ≈ " => State.E
 infixr:85 " ⋆ " => State.star

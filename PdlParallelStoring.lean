@@ -5,4 +5,8 @@ import PdlParallelStoring.Examples
 import PdlParallelStoring.Semantics
 import PdlParallelStoring.AxiomaticSystem
 import PdlParallelStoring.Soundness
-import PdlParallelStoring.Completeness
+import PdlParallelStoring.Completeness.Consistency
+import PdlParallelStoring.Completeness.Lindenbaum
+import PdlParallelStoring.Completeness.CanonicalModel
+import PdlParallelStoring.Completeness.GeneratedSubmodel
+import PdlParallelStoring.Completeness.Completeness
