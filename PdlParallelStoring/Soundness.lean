@@ -169,13 +169,12 @@ lemma soundness_functional_r₁ (φ : Formula) :
   obtain ⟨h₁, h₂⟩ := hSat
   obtain ⟨s, hRws, hSat⟩ := h₁
   rewrite [P.r₁] at hRws
-  obtain ⟨s₁, s₂, hEq₁, hEq₂⟩ := hRws
+  obtain ⟨s₁, s₂, hMem₁, hEq₁⟩ := hRws
   obtain ⟨s', hRws', hNotSat⟩ := h₂
   rewrite [P.r₁] at hRws'
-  obtain ⟨s₁', s₂', hEq₁', hEq₂'⟩ := hRws'
-  have hSame : s₁ ⋆ s₂ = s₁'⋆ s₂' := by rw [← hEq₁, hEq₁']
-  have ⟨hs₁Eq, hs₂Eq⟩ := State.inject.mp hSame
-  have s'Eq : s' = s := by rw [hEq₂', ← hs₁Eq, ← hEq₂]
+  obtain ⟨s₁', s₂', hMem₂, hEq₂⟩ := hRws'
+  have ⟨hs₁Eq, _⟩ := State.separated hMem₁ hMem₂
+  have s'Eq : s' = s := by rw [hEq₂, ← hs₁Eq, ← hEq₁]
   rewrite [s'Eq] at hNotSat
   exact hNotSat hSat
 
@@ -187,13 +186,12 @@ lemma soundness_functional_r₂ (φ : Formula) :
   obtain ⟨h₁, h₂⟩ := hSat
   obtain ⟨s, hRws, hSat⟩ := h₁
   rewrite [P.r₂] at hRws
-  obtain ⟨s₁, s₂, hEq₁, hEq₂⟩ := hRws
+  obtain ⟨s₁, s₂, hMem₁, hEq₁⟩ := hRws
   obtain ⟨s', hRws', hNotSat⟩ := h₂
   rewrite [P.r₂] at hRws'
-  obtain ⟨s₁', s₂', hEq₁', hEq₂'⟩ := hRws'
-  have hSame : s₁ ⋆ s₂ = s₁'⋆ s₂' := by rw [← hEq₁, hEq₁']
-  have ⟨hs₁Eq, hs₂Eq⟩ := State.inject.mp hSame
-  have s'Eq : s' = s := by rw [hEq₂', ← hs₂Eq, ← hEq₂]
+  obtain ⟨s₁', s₂', hMem₂, hEq₂⟩ := hRws'
+  have ⟨_, hs₂Eq⟩ := State.separated hMem₁ hMem₂
+  have s'Eq : s' = s := by rw [hEq₂, ← hs₂Eq, ← hEq₁]
   rewrite [s'Eq] at hNotSat
   exact hNotSat hSat
 
@@ -203,15 +201,13 @@ lemma soundness_temporal_forward (φ : Formula) :
   subst hEq
   simp only [satisfies, Decidable.not_not, not_exists, not_forall, not_and] at hSat
   obtain ⟨hSat, hEx⟩ := hSat
-  obtain ⟨s, hEx₂⟩ := hEx
-  obtain ⟨hRws, hAll⟩ := hEx₂
-  have hR : M.F.R r₁ s w :=  by
+  obtain ⟨s, hRws, hAll⟩ := hEx
+  have hR : M.F.R r₁ s w := by
     rewrite [P.s₁] at hRws
-    obtain ⟨w', t, hw_eq, hs_eq⟩ := hRws
+    obtain ⟨w', t, hw_eq, hs_mem⟩ := hRws
     rewrite [P.r₁]
-    use w', t
-  have hNotSat : ¬ (M, w) ⊨ φ := hAll w hR
-  exact hNotSat hSat
+    exact ⟨w', t, hw_eq ▸ hs_mem, hw_eq⟩
+  exact hAll w hR hSat
 
 lemma soundness_temporal_backward (φ : Formula) :
     ⊨ φ → ([r₁] ⟨s₁⟩ φ) := by
@@ -220,15 +216,13 @@ lemma soundness_temporal_backward (φ : Formula) :
   simp only
     [satisfies, Decidable.not_not, not_exists, not_and, not_forall, Classical.not_imp ] at hSat
   obtain ⟨hSat, hEx⟩ := hSat
-  obtain ⟨s, hEx₂⟩ := hEx
-  obtain ⟨hRws, hAll⟩ := hEx₂
+  obtain ⟨s, hRws, hAll⟩ := hEx
   have hR : M.F.R s₁ s w := by
     rewrite [P.r₁] at hRws
-    obtain ⟨t, u, hw_eq, hs_eq⟩ := hRws
+    obtain ⟨t, u, hw_mem, hs_eq⟩ := hRws
     rewrite [P.s₁]
-    use t, u
-  have hNotSat : ¬ (M, w) ⊨ φ := hAll w hR
-  exact hNotSat hSat
+    exact ⟨t, u, hs_eq, hw_mem⟩
+  exact hAll w hR hSat
 
 lemma soundness_temporal_forward₂ (φ : Formula) :
     ⊨ φ → ([s₂] ⟨r₂⟩ φ) := by
@@ -238,15 +232,13 @@ lemma soundness_temporal_forward₂ (φ : Formula) :
   simp only
     [ satisfies, Decidable.not_not, not_exists, not_and, not_forall
     , Classical.not_imp ] at hSat₁ hSat₂
-  obtain ⟨s, hEx⟩ := hSat₂
-  obtain ⟨hEx₂, hAll⟩ := hEx
+  obtain ⟨s, hRws, hAll⟩ := hSat₂
   have hRsw : M.F.R r₂ s w := by
-    simp only [P.s₂, exists_eq_left'] at hEx₂
-    simp only [P.r₂, exists_eq_right']
-    obtain ⟨t, hs_eq⟩ := hEx₂
-    use t
-  have hNotSat : ¬ (M, w) ⊨ φ := hAll w hRsw
-  exact hNotSat hSat₁
+    rewrite [P.s₂] at hRws
+    obtain ⟨t, u, hw_eq, hs_mem⟩ := hRws
+    rewrite [P.r₂]
+    exact ⟨t, u, hw_eq ▸ hs_mem, hw_eq⟩
+  exact hAll w hRsw hSat₁
 
 lemma soundness_temporal_backward₂ (φ : Formula) :
     ⊨ φ → ([r₂] ⟨s₂⟩ φ) := by
@@ -256,15 +248,13 @@ lemma soundness_temporal_backward₂ (φ : Formula) :
   simp only
     [ satisfies, Decidable.not_not, not_exists, not_and, not_forall
     , Classical.not_imp ] at hSat₁ hSat₂
-  obtain ⟨s, hEx⟩ := hSat₂
-  obtain ⟨hRws, hAll⟩ := hEx
+  obtain ⟨s, hRws, hAll⟩ := hSat₂
   have hRsw : M.F.R s₂ s w := by
-    simp only [P.r₂, exists_eq_right'] at hRws
-    simp only [P.s₂, exists_eq_left']
-    obtain ⟨t, hw_eq⟩ := hRws
-    use t
-  have hNotSat : ¬ (M, w) ⊨ φ := hAll w hRsw
-  exact hNotSat hSat₁
+    rewrite [P.r₂] at hRws
+    obtain ⟨t, u, hw_mem, hs_eq⟩ := hRws
+    rewrite [P.s₂]
+    exact ⟨t, u, hs_eq, hw_mem⟩
+  exact hAll w hRsw hSat₁
 
 lemma soundness_same_domain :
     ⊨ (⟨r₁⟩ ⊤') ↔ (⟨r₂⟩ ⊤') := by
@@ -277,24 +267,20 @@ lemma soundness_same_domain :
       [ satisfies, not_false_eq_true, and_true, not_exists, not_forall
       , Decidable.not_not ] at hAll hSat₂
     obtain ⟨s, hRws⟩ := hSat₂
-    simp only [P.r₁, exists_and_right, exists_eq_right'] at hRws
-    obtain ⟨s', hwEq⟩ := hRws
-    have hR₂ : M.F.R r₂ w s' := by
-      rewrite [P.r₂]
-      use s, s'
-    exact hAll s' hR₂
+    rewrite [P.r₁] at hRws
+    obtain ⟨a, b, hw_mem, rfl⟩ := hRws
+    have hR₂ : M.F.R r₂ w b := P.r₂.mpr ⟨s, b, hw_mem, rfl⟩
+    exact hAll b hR₂
   . intros hSat₁
     obtain ⟨hSat₂, hAll⟩ := hSat₁
-    simp only [satisfies, not_false_eq_true, and_true] at hAll hSat₂
-    simp only [Decidable.not_not] at hSat₂
-    simp only [not_exists] at hAll
+    simp only
+      [ satisfies, not_false_eq_true, and_true, not_exists, not_forall
+      , Decidable.not_not ] at hAll hSat₂
     obtain ⟨t, hRwt⟩ := hSat₂
-    simp [P.r₂] at hRwt
-    obtain ⟨s', ht_eq⟩ := hRwt
-    have hR₁ : M.F.R r₁ w s' := by
-      rewrite [P.r₁, ht_eq]
-      use s', t
-    exact hAll s' hR₁
+    rewrite [P.r₂] at hRwt
+    obtain ⟨a, b, hw_mem, rfl⟩ := hRwt
+    have hR₁ : M.F.R r₁ w a := P.r₁.mpr ⟨a, t, hw_mem, rfl⟩
+    exact hAll a hR₁
 
 lemma soundness_same_domain₂ :
     ⊨ (⟨s₁⟩ ⊤') ↔ (⟨s₂⟩ ⊤') := by
@@ -306,13 +292,15 @@ lemma soundness_same_domain₂ :
     simp only
       [ satisfies, not_false_eq_true, and_true, not_exists, not_forall
       , Decidable.not_not ] at hAll hSat₂
-    exact hAll (w ⋆ w) (P.s₂.mpr ⟨w, w, rfl, rfl⟩)
+    obtain ⟨z, hz⟩ := State.serial w w
+    exact hAll z (P.s₂.mpr ⟨w, w, rfl, hz⟩)
   . intros hSat₁
     obtain ⟨hSat₂, hAll⟩ := hSat₁
     simp only
       [ satisfies, not_false_eq_true, and_true, not_exists, not_forall
       , Decidable.not_not ] at hAll hSat₂
-    exact hAll (w ⋆ w) (P.s₁.mpr ⟨w, w, rfl, rfl⟩)
+    obtain ⟨z, hz⟩ := State.serial w w
+    exact hAll z (P.s₁.mpr ⟨w, w, rfl, hz⟩)
 
 lemma soundness_unicity (φ : Formula) :
     ⊨ (⟨s₁ ; r₁⟩ φ) ↔ ([s₁ ; r₁] φ) := by
@@ -336,8 +324,7 @@ lemma soundness_unicity (φ : Formula) :
   . intros hSat
     simp only [satisfies, Decidable.not_not, not_exists, not_and] at hSat
     obtain ⟨hPos, hNeg⟩ := hSat
-    have hReach : M.F.R (s₁ ; r₁) w w := by
-      rw [Standard₀.comp, s₁_comp_r₁]
+    have hReach : M.F.R (s₁ ; r₁) w w := by rw [Standard₀.comp, s₁_comp_r₁]
     have hPhiHolds : (M, w) ⊨ φ := hPos w hReach
     have hPhiNotHolds : ¬ (M, w) ⊨ φ := hNeg w hReach
     exact hPhiNotHolds hPhiHolds
@@ -364,8 +351,7 @@ lemma soundness_unicity₂ (φ : Formula) :
   . intros hSat
     simp only [satisfies, Decidable.not_not, not_exists, not_and] at hSat
     obtain ⟨hPos, hNeg⟩ := hSat
-    have hReach : M.F.R (s₂ ; r₂) w w := by
-      rw [Standard₀.comp, s₂_comp_r₂]
+    have hReach : M.F.R (s₂ ; r₂) w w := by rw [Standard₀.comp, s₂_comp_r₂]
     have hPhiHolds : (M, w) ⊨ φ := hPos w hReach
     have hPhiNotHolds : ¬ (M, w) ⊨ φ := hNeg w hReach
     exact hPhiNotHolds hPhiHolds
@@ -378,7 +364,7 @@ lemma soundness_store_restore_id (φ : Formula) :
     [satisfies, not_exists, not_and, Decidable.not_not, not_forall, Classical.not_imp] at hSat
   have hReach : M.F.R (s₁ ; r₂) w w := by
     rewrite [Standard₀.comp, s₁_comp_r₂]
-    simp only [State.equiv.refl]
+    exact State.equiv.refl w
   have hPhiHolds : (M, w) ⊨ φ := hSat w hReach
   exact hPhiNotHolds hPhiHolds
 
@@ -404,8 +390,24 @@ lemma soundness_store_restore_iterate (φ : Formula) :
   obtain ⟨s, hRws, t, hRst, hPhiNotHolds⟩ := hSat
   have hReach : M.F.R (s₁ ; r₂) w t := by
     rewrite [Standard₀.comp, s₁_comp_r₂] at *
-    simp only [State.equiv.trans hRws hRst]
+    exact State.equiv.trans hRws hRst
   have hPhiHolds : (M, t) ⊨ φ := hAll t hReach
+  exact hPhiNotHolds hPhiHolds
+
+lemma soundness_equiv_subsume (α : Program) (φ : Formula) :
+    ⊨ (([s₁ ; r₂] φ) → ([α] φ)) := by
+  intros F PF M PS hEq w hAnd
+  subst hEq
+  obtain ⟨hAll, hEx⟩ := hAnd
+  simp only
+    [satisfies, not_exists, not_and, Decidable.not_not, not_forall, Classical.not_imp]
+      at hAll hEx
+  obtain ⟨s, hRel, hPhiNotHolds⟩ := hEx
+  have hReach : M.F.R (s₁ ; r₂) w s := by
+    rewrite [Standard₀.comp]
+    obtain ⟨z, hz⟩ := State.serial w s
+    exact ⟨z, PF.s₁.mpr ⟨w, s, rfl, hz⟩, PF.r₂.mpr ⟨w, s, hz, rfl⟩⟩
+  have hPhiHolds : (M, s) ⊨ φ := hAll s hReach
   exact hPhiNotHolds hPhiHolds
 
 lemma soundness_modus_ponens (φ₁ φ₂ : Formula) (ih₁ : ⊨ φ₁) (ih₂ : ⊨ φ₁ → φ₂) :
@@ -471,6 +473,7 @@ theorem soundness_general :
       | storeRestoreId => apply soundness_store_restore_id
       | storeRestoreDiamond => apply soundness_store_restore_diamond
       | storeRestoreIterate => apply soundness_store_restore_iterate
+      | equivSubsume => apply soundness_equiv_subsume
   | modusPonens _ _ ih₁ ih₂ =>
       intros hIn
       apply soundness_modus_ponens

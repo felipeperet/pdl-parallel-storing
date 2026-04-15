@@ -143,7 +143,7 @@ lemma list_conjunction_in_mcs : ∀ {Γ : MaximalConsistentSet} {L : List Formul
   | cons ψ tail ih =>
       simp only [list_conjunction]
       have hψ : ψ ∈ Γ.val := h ψ (.head tail)
-      have htail : list_conjunction tail ∈ Γ.val := ih (fun φ hφ => h φ (List.mem_cons_of_mem ψ hφ))
+      have htail : list_conjunction tail ∈ Γ.val := ih (λ φ hφ => h φ (List.mem_cons_of_mem ψ hφ))
       exact mcs_is_closed
         (Deduction.modusPonens (Deduction.premise htail)
           (Deduction.modusPonens (Deduction.premise hψ)
@@ -643,111 +643,6 @@ lemma existence_lemma : ∀ {Γ : MaximalConsistentSet} {α : Program} {φ : For
     , h_ext (Set.mem_union_right _ rfl)
     ⟩
 
-lemma truth_lemma : ∀ {φ : Formula} {Γ : canonicalModel.F.W},
-    ((canonicalModel, Γ) ⊨ φ) ↔ φ ∈ Γ.val := by
-  intro φ
-  induction φ using Formula.rec (motive_2 := λ _ => True) with
-  | false =>
-      intro Γ
-      constructor
-      . intros h_sat
-        simp [satisfies] at h_sat
-      . intros false_in
-        simp [satisfies]
-        have h_deriv_false : Γ.val ⊢ ⊥' := by
-          apply Deduction.premise
-          exact false_in
-        have ⟨h_cons, _⟩ := Γ.property
-        have h_incons : ¬ IsConsistent Γ.val := by
-          simp [IsConsistent]
-          exact h_deriv_false
-        exact h_incons h_cons
-  | atom p =>
-      intro Γ
-      constructor
-      . intros h_sat
-        simp [satisfies, canonicalModel, canonicalValuation] at h_sat
-        exact h_sat
-      . intros h_in
-        simp only [satisfies, canonicalModel, canonicalValuation]
-        exact h_in
-  | neg φ ih =>
-      intro Γ
-      constructor
-      . intros h_sat
-        simp [satisfies] at h_sat
-        exact mcs_complete (ih.not.mp h_sat)
-      . intros h_neg_phi_in
-        simp [satisfies]
-        intro h_sat
-        exact mcs_no_contradiction (ih.mp h_sat) h_neg_phi_in
-  | conj φ ψ ih_φ ih_ψ =>
-      intro Γ
-      constructor
-      . intros h_sat
-        simp [satisfies] at h_sat
-        have φ_in : φ ∈ Γ.val := ih_φ.mp h_sat.1
-        have ψ_in : ψ ∈ Γ.val := ih_ψ.mp h_sat.2
-        have h_ax : Γ.val ⊢ (φ → (ψ → (φ ∧ ψ))) := by
-          apply Deduction.axiom'
-          apply Axiom.conjIntro
-        have h_step : Γ.val ⊢ (ψ → (φ ∧ ψ)) := by
-          apply Deduction.modusPonens
-          · exact Deduction.premise φ_in
-          · exact h_ax
-        have h_conj : Γ.val ⊢ (φ ∧ ψ) := by
-          apply Deduction.modusPonens
-          · exact Deduction.premise ψ_in
-          · exact h_step
-        exact mcs_is_closed h_conj
-      . intros h_in
-        simp [satisfies]
-        have h_deriv_and : Γ.val ⊢ φ ∧ ψ := Deduction.premise h_in
-        constructor
-        . have h_deriv : Γ.val ⊢ φ := by
-            have step : (Γ.val ⊢ (φ ∧ ψ) → φ) :=
-              Deduction.axiom' (Axiom.conjElimL φ ψ)
-            exact Deduction.modusPonens h_deriv_and step
-          have h_phi_in : φ ∈ Γ.val := mcs_is_closed h_deriv
-          exact ih_φ.mpr h_phi_in
-        . have h_deriv : Γ.val ⊢ ψ := by
-            have step : (Γ.val ⊢ (φ ∧ ψ) → ψ) :=
-              Deduction.axiom' (Axiom.conjElimR φ ψ)
-            exact Deduction.modusPonens h_deriv_and step
-          have h_psi_in : ψ ∈ Γ.val := mcs_is_closed h_deriv
-          exact ih_ψ.mpr h_psi_in
-  | diamond α φ _ ih =>
-      intro Γ
-      constructor
-      . intros h_sat
-        simp [satisfies] at h_sat
-        obtain ⟨Δ, h_rel, h_sat'⟩ := h_sat
-        have h_phi_in : φ ∈ Δ.val := ih.mp h_sat'
-        by_contra h_not_in
-        have h_neg_dia : (¬ (⟨α⟩ φ)) ∈ Γ.val := mcs_complete h_not_in
-        have h_deriv_box : Γ.val ⊢ ([α] ¬ φ) := by
-          apply Deduction.modusPonens
-          · exact Deduction.premise h_neg_dia
-          · apply weakening (show ∅ ⊆ Γ.val by simp)
-            exact neg_diamond_to_box_neg α φ
-        have h_box_in : ([α] ¬ φ) ∈ Γ.val := mcs_is_closed h_deriv_box
-        have h_neg_phi_in : (¬ φ) ∈ Δ.val := h_rel h_box_in
-        exact mcs_no_contradiction h_phi_in h_neg_phi_in
-      . intros h_in
-        simp [satisfies]
-        obtain ⟨Δ, h_rel, h_phi_in⟩ := existence_lemma h_in
-        exact ⟨Δ, h_rel, ih.mpr h_phi_in⟩
-  | atomic p => trivial
-  | comp α β ih_α ih_β => trivial
-  | choice α β ih_α ih_β => trivial
-  | iter α ih => trivial
-  | parallel α β ih_α ih_β => trivial
-  | test φ ih => trivial
-  | s₁ => trivial
-  | s₂ => trivial
-  | r₁ => trivial
-  | r₂ => trivial
-
 def reachableWorlds (Γ : MaximalConsistentSet) : Set MaximalConsistentSet :=
   {Δ | canonicalRelation (s₁ ; r₂) Γ Δ}
 
@@ -875,6 +770,58 @@ lemma s₁r₂_trans : ∀ {Γ Δ Θ : MaximalConsistentSet},
   have h_in_delta : ([s₁ ; r₂] φ) ∈ Δ.val := h₁ h_iter
   exact h₂ h_in_delta
 
+lemma r₁_to_s₁ : ∀ {Ω Δ : MaximalConsistentSet},
+    canonicalRelation r₁ Ω Δ →
+    canonicalRelation s₁ Δ Ω := by
+  intros Ω Δ h_r₁
+  intro φ h_box_s₁
+  by_contra h_not
+  have h_neg : (¬ φ) ∈ Ω.val := mcs_complete h_not
+  have h_box_r₁ : ([r₁] ⟨s₁⟩ (¬ φ)) ∈ Ω.val := mcs_is_closed
+    (Deduction.modusPonens (Deduction.premise h_neg)
+      (Deduction.axiom' (Axiom.temporalBackward (¬ φ))))
+  have h_dia : (⟨s₁⟩ (¬ φ)) ∈ Δ.val := h_r₁ h_box_r₁
+  exact mcs_no_contradiction h_dia h_box_s₁
+
+lemma s₁_to_r₁ : ∀ {Δ Ω : MaximalConsistentSet},
+    canonicalRelation s₁ Δ Ω →
+    canonicalRelation r₁ Ω Δ := by
+  intros Δ Ω h_s₁
+  intro φ h_box_r₁
+  by_contra h_not
+  have h_neg : (¬ φ) ∈ Δ.val := mcs_complete h_not
+  have h_box_s₁ : ([s₁] ⟨r₁⟩ (¬ φ)) ∈ Δ.val := mcs_is_closed
+    (Deduction.modusPonens (Deduction.premise h_neg)
+      (Deduction.axiom' (Axiom.temporalForward (¬ φ))))
+  have h_dia : (⟨r₁⟩ (¬ φ)) ∈ Ω.val := h_s₁ h_box_s₁
+  exact mcs_no_contradiction h_dia h_box_r₁
+
+lemma r₂_to_s₂ : ∀ {Ω Δ : MaximalConsistentSet},
+    canonicalRelation r₂ Ω Δ →
+    canonicalRelation s₂ Δ Ω := by
+  intros Ω Δ h_r₂
+  intro φ h_box_s₂
+  by_contra h_not
+  have h_neg : (¬ φ) ∈ Ω.val := mcs_complete h_not
+  have h_box_r₂ : ([r₂] ⟨s₂⟩ (¬ φ)) ∈ Ω.val := mcs_is_closed
+    (Deduction.modusPonens (Deduction.premise h_neg)
+      (Deduction.axiom' (Axiom.temporalBackward₂ (¬ φ))))
+  have h_dia : (⟨s₂⟩ (¬ φ)) ∈ Δ.val := h_r₂ h_box_r₂
+  exact mcs_no_contradiction h_dia h_box_s₂
+
+lemma s₂_to_r₂ : ∀ {Δ Ω : MaximalConsistentSet},
+    canonicalRelation s₂ Δ Ω →
+    canonicalRelation r₂ Ω Δ := by
+  intros Δ Ω h_s₂
+  intro φ h_box_r₂
+  by_contra h_not
+  have h_neg : (¬ φ) ∈ Δ.val := mcs_complete h_not
+  have h_box_s₂ : ([s₂] ⟨r₂⟩ (¬ φ)) ∈ Δ.val := mcs_is_closed
+    (Deduction.modusPonens (Deduction.premise h_neg)
+      (Deduction.axiom' (Axiom.temporalForward₂ (¬ φ))))
+  have h_dia : (⟨r₂⟩ (¬ φ)) ∈ Ω.val := h_s₂ h_box_s₂
+  exact mcs_no_contradiction h_dia h_box_r₂
+
 lemma star_exists : ∀ {Γ Δ₁ Δ₂ : MaximalConsistentSet},
     (Δ₁ ∈ reachableWorlds Γ) →
     (Δ₂ ∈ reachableWorlds Γ) →
@@ -991,13 +938,13 @@ lemma star_exists : ∀ {Γ Δ₁ Δ₂ : MaximalConsistentSet},
     exact mcs_no_contradiction h_Ψ_in_Δ₂ h_neg_Ψ_in_Δ₂
   obtain ⟨Ω, h_ext⟩ := Lindenbaum.lindenbaum h_cons
   exact ⟨Ω,
-    fun {φ} h_box => by
+    λ {φ} h_box => by
       by_contra h_not
       have h_neg : (¬ φ) ∈ Δ₁.val := mcs_complete h_not
       have h_dia : (⟨r₁⟩ (¬ φ)) ∈ Ω.val :=
         h_ext (Set.mem_union_left _ ⟨¬ φ, h_neg, rfl⟩)
       exact mcs_no_contradiction h_dia h_box,
-    fun {φ} h_box => by
+    λ {φ} h_box => by
       by_contra h_not
       have h_neg : (¬ φ) ∈ Δ₂.val := mcs_complete h_not
       have h_dia : (⟨r₂⟩ (¬ φ)) ∈ Ω.val :=
@@ -1012,19 +959,240 @@ def generatedSubmodel (Γ : MaximalConsistentSet) : Model where
   }
   V := λ lit ⟨Δ, _⟩ => canonicalValuation lit Δ
 
+lemma reach_closed : ∀ {Γ Δ Δ' : MaximalConsistentSet} {α : Program},
+    (Δ ∈ reachableWorlds Γ) →
+    canonicalRelation α Δ Δ' →
+    Δ' ∈ reachableWorlds Γ := by
+  intros Γ Δ Δ' α h_reach h_rel
+  simp only [reachableWorlds, Set.mem_setOf_eq] at *
+  intro φ h_in
+  have h_iter : ([s₁ ; r₂] [s₁ ; r₂] φ) ∈ Γ.val := mcs_is_closed
+    (Deduction.modusPonens (Deduction.premise h_in)
+      (Deduction.axiom' (Axiom.storeRestoreIterate φ)))
+  have h_delta : ([s₁ ; r₂] φ) ∈ Δ.val := h_reach h_iter
+  have h_alpha : ([α] φ) ∈ Δ.val := mcs_is_closed
+    (Deduction.modusPonens (Deduction.premise h_delta)
+      (Deduction.axiom' (Axiom.equivSubsume α φ)))
+  exact h_rel h_alpha
+
+instance generatedSubmodelState (Γ : MaximalConsistentSet) :
+    State (reachableWorlds Γ) where
+  E := λ _ _ => True
+  equiv := ⟨λ _ => trivial, λ _ => trivial, λ _ _ => trivial⟩
+  star := λ ⟨Δ₁, h₁⟩ ⟨Δ₂, h₂⟩ =>
+    { Ω : reachableWorlds Γ |
+      canonicalRelation r₁ Ω.val Δ₁ ∧ canonicalRelation r₂ Ω.val Δ₂ }
+  separated := by
+    intro ⟨z, hz⟩ ⟨x, hx⟩ ⟨y, hy⟩ ⟨x', hx'⟩ ⟨y', hy'⟩
+    intro ⟨hr₁, hr₂⟩ ⟨hr₁', hr₂'⟩
+    exact ⟨Subtype.ext (r₁_functional hr₁ hr₁'), Subtype.ext (r₂_functional hr₂ hr₂')⟩
+  serial := by
+    intro ⟨Δ₁, h₁⟩ ⟨Δ₂, h₂⟩
+    obtain ⟨Ω, hΩ_r₁, hΩ_r₂⟩ := star_exists h₁ h₂
+    exact ⟨⟨Ω, reach_closed h₁ (r₁_to_s₁ hΩ_r₁)⟩, hΩ_r₁, hΩ_r₂⟩
+  nonempty := ⟨⟨Γ, s₁r₂_refl⟩⟩
+
+lemma has_r₁_decomp {Ω Δ : MaximalConsistentSet}
+    (h : canonicalRelation r₁ Ω Δ) : (⟨r₁⟩ (¬ ⊥' : Formula)) ∈ Ω.val := by
+  by_contra h_not
+  have not_not_phi_in : (¬ (¬ ⊥' : Formula)) ∈ Δ.val :=
+    h (mcs_is_closed (Deduction.modusPonens (Deduction.premise (mcs_complete h_not))
+      (weakening (Set.empty_subset _) (neg_diamond_to_box_neg r₁ (¬ ⊥' : Formula)))))
+  exact mcs_no_contradiction (mcs_complete false_not_in_mcs) not_not_phi_in
+
+lemma has_r₂_decomp {Ω Δ : MaximalConsistentSet}
+    (h : canonicalRelation r₂ Ω Δ) : (⟨r₂⟩ (¬ ⊥' : Formula)) ∈ Ω.val := by
+  by_contra h_not
+  have not_not_phi_in : (¬ (¬ ⊥' : Formula)) ∈ Δ.val :=
+    h (mcs_is_closed (Deduction.modusPonens (Deduction.premise (mcs_complete h_not))
+      (weakening (Set.empty_subset _) (neg_diamond_to_box_neg r₂ (¬ ⊥' : Formula)))))
+  exact mcs_no_contradiction (mcs_complete false_not_in_mcs) not_not_phi_in
+
 instance generatedSubmodelProperStandard (Γ : MaximalConsistentSet) :
-    ProperStandard₀ (generatedSubmodel Γ) := sorry
+    ProperStandard₀ (generatedSubmodel Γ) where
+  comp := by
+    intros α β
+    funext ⟨Δ, hΔ⟩ ⟨Δ', hΔ'⟩
+    apply propext
+    constructor
+    · intro h
+      simp only [generatedSubmodel] at h ⊢
+      have h_comp : Relation.Comp (canonicalRelation α) (canonicalRelation β) Δ Δ' := by
+        have h_comp' := canonicalStandard.comp (α := α) (β := β)
+        simp only [canonicalModel, canonicalFrame] at h_comp'
+        rewrite [h_comp'] at h
+        exact h
+      obtain ⟨mid, hα, hβ⟩ := h_comp
+      have h_mid_reach : mid ∈ reachableWorlds Γ := reach_closed hΔ hα
+      exact ⟨⟨mid, h_mid_reach⟩, hα, hβ⟩
+    · intros h
+      simp only [generatedSubmodel, Relation.Comp] at h
+      obtain ⟨⟨mid, hmid⟩, hα, hβ⟩ := h
+      intro φ h_box_comp
+      have h_nested : ([α] [β] φ) ∈ Δ.val := mcs_is_closed
+        (Deduction.modusPonens (Deduction.premise h_box_comp)
+          (iff_mp (Deduction.axiom' (Axiom.modalComposition α β φ))))
+      exact hβ (hα h_nested)
+  choice := by
+    intros α β
+    funext ⟨Δ, hΔ⟩ ⟨Δ', hΔ'⟩
+    apply propext
+    constructor
+    . intro h
+      simp [generatedSubmodel] at h ⊢
+      have h_choice := canonicalStandard.choice (α := α) (β := β)
+      simp only [canonicalModel, canonicalFrame] at h_choice
+      rewrite [h_choice] at h
+      exact h
+    · intro h
+      simp only [generatedSubmodel] at h ⊢
+      have h_choice := canonicalStandard.choice (α := α) (β := β)
+      simp only [canonicalModel, canonicalFrame] at h_choice
+      rewrite [h_choice]
+      exact h
+  S := generatedSubmodelState Γ
+  respects_equiv := λ _ => trivial
+  s₁ := by
+    intro ⟨Ω, hΩ⟩ ⟨Δ, hΔ⟩
+    simp only [generatedSubmodel]
+    constructor
+    · intro h_s₁
+      have h_r₁ : canonicalRelation r₁ Δ Ω := s₁_to_r₁ h_s₁
+      have h_dia_r₂ : (⟨r₂⟩ (¬ ⊥' : Formula)) ∈ Δ.val :=
+        mcs_is_closed (Deduction.modusPonens (Deduction.premise (has_r₁_decomp h_r₁))
+          (iff_mp (Deduction.axiom' Axiom.sameDomain)))
+      obtain ⟨Δ₂, h_r₂_rel, _⟩ := existence_lemma h_dia_r₂
+      have h_Δ₂_reach : Δ₂ ∈ reachableWorlds Γ := reach_closed hΔ h_r₂_rel
+      exact ⟨⟨Ω, hΩ⟩, ⟨Δ₂, h_Δ₂_reach⟩, rfl, h_r₁, h_r₂_rel⟩
+    · intro ⟨s, t, h_eq, h_mem⟩
+      obtain ⟨h_r₁, _⟩ := h_mem
+      intro φ h_box
+      have h_box' : ([s₁] φ) ∈ s.val.val := by rw [← h_eq]; exact h_box
+      exact r₁_to_s₁ h_r₁ h_box'
+  s₂ := by
+    intro ⟨Ω, hΩ⟩ ⟨Δ, hΔ⟩
+    simp only [generatedSubmodel]
+    constructor
+    · intro h_s₂
+      have h_r₂ : canonicalRelation r₂ Δ Ω := s₂_to_r₂ h_s₂
+      have h_dia_r₁ : (⟨r₁⟩ (¬ ⊥' : Formula)) ∈ Δ.val :=
+        mcs_is_closed (Deduction.modusPonens (Deduction.premise (has_r₂_decomp h_r₂))
+          (iff_mpr (Deduction.axiom' Axiom.sameDomain)))
+      obtain ⟨Δ₁, h_r₁_rel, _⟩ := existence_lemma h_dia_r₁
+      have h_Δ₁_reach : Δ₁ ∈ reachableWorlds Γ := reach_closed hΔ h_r₁_rel
+      exact ⟨⟨Δ₁, h_Δ₁_reach⟩, ⟨Ω, hΩ⟩, rfl, h_r₁_rel, h_r₂⟩
+    · intro ⟨s, t, h_eq, h_mem⟩
+      obtain ⟨_, h_r₂⟩ := h_mem
+      intro φ h_box
+      have h_box' : ([s₂] φ) ∈ t.val.val := by rw [← h_eq]; exact h_box
+      exact r₂_to_s₂ h_r₂ h_box'
+  r₁ := by
+    intro ⟨Ω, hΩ⟩ ⟨Δ, hΔ⟩
+    simp only [generatedSubmodel]
+    constructor
+    · intro h_r₁
+      have h_dia_r₂ : (⟨r₂⟩ (¬ ⊥' : Formula)) ∈ Ω.val :=
+        mcs_is_closed (Deduction.modusPonens (Deduction.premise (has_r₁_decomp h_r₁))
+          (iff_mp (Deduction.axiom' Axiom.sameDomain)))
+      obtain ⟨Δ₂, h_r₂_rel, _⟩ := existence_lemma h_dia_r₂
+      have h_Δ₂_reach : Δ₂ ∈ reachableWorlds Γ := reach_closed hΩ h_r₂_rel
+      exact ⟨⟨Δ, hΔ⟩, ⟨Δ₂, h_Δ₂_reach⟩, ⟨h_r₁, h_r₂_rel⟩, rfl⟩
+    · intro ⟨s, t, h_mem, h_eq⟩
+      obtain ⟨h_r₁, _⟩ := h_mem
+      intro φ h_box
+      have h_result := h_r₁ h_box
+      rw [← h_eq] at h_result
+      exact h_result
+  r₂ := by
+    intro ⟨Ω, hΩ⟩ ⟨Δ, hΔ⟩
+    simp only [generatedSubmodel]
+    constructor
+    · intro h_r₂
+      have h_dia_r₁ : (⟨r₁⟩ (¬ ⊥' : Formula)) ∈ Ω.val :=
+        mcs_is_closed (Deduction.modusPonens (Deduction.premise (has_r₂_decomp h_r₂))
+          (iff_mpr (Deduction.axiom' Axiom.sameDomain)))
+      obtain ⟨Δ₁, h_r₁_rel, _⟩ := existence_lemma h_dia_r₁
+      have h_Δ₁_reach : Δ₁ ∈ reachableWorlds Γ := reach_closed hΩ h_r₁_rel
+      exact ⟨⟨Δ₁, h_Δ₁_reach⟩, ⟨Δ, hΔ⟩, ⟨h_r₁_rel, h_r₂⟩, rfl⟩
+    · intro ⟨s, t, h_mem, h_eq⟩
+      obtain ⟨_, h_r₂⟩ := h_mem
+      intro φ h_box
+      have h_result := h_r₂ h_box
+      rw [← h_eq] at h_result
+      exact h_result
 
 def gamma_is_world (Γ : MaximalConsistentSet) : (generatedSubmodel Γ).F.W :=
   ⟨Γ, s₁r₂_refl⟩
 
-lemma submodel_truth_at_gamma : ∀ {Γ : MaximalConsistentSet} {φ : Formula},
-    ((generatedSubmodel Γ, gamma_is_world Γ) ⊨ φ) ↔ φ ∈ Γ.val := by
-  intros Γ φ
-  constructor
-  . intros hSat
-    sorry
-  . sorry
+lemma submodel_truth_aux (Γ : MaximalConsistentSet) :
+    ∀ (φ : Formula) (w : (generatedSubmodel Γ).F.W),
+    ((generatedSubmodel Γ, w) ⊨ φ) ↔ φ ∈ w.val.val := by
+  intro φ
+  induction φ using Formula.rec (motive_2 := λ _ => True) with
+  | false =>
+      intro ⟨Ω, hΩ⟩
+      constructor
+      · intro h; simp [satisfies] at h
+      · intro h; exact absurd (Deduction.premise h) Ω.property.1
+  | atom p =>
+      intro ⟨Ω, hΩ⟩
+      constructor
+      · intro h; simp [satisfies, generatedSubmodel, canonicalValuation] at h; exact h
+      · intro h; simp [satisfies, generatedSubmodel, canonicalValuation]; exact h
+  | neg ψ ih =>
+      intro ⟨Ω, hΩ⟩
+      constructor
+      · intro h; simp [satisfies] at h
+        exact mcs_complete ((ih ⟨Ω, hΩ⟩).not.mp h)
+      · intro h; simp [satisfies]
+        exact λ h_sat => mcs_no_contradiction ((ih ⟨Ω, hΩ⟩).mp h_sat) h
+  | conj ψ χ ih_ψ ih_χ =>
+      intro ⟨Ω, hΩ⟩
+      constructor
+      · intro h
+        simp [satisfies] at h
+        exact mcs_is_closed
+          (Deduction.modusPonens (Deduction.premise ((ih_χ ⟨Ω, hΩ⟩).mp h.2))
+            (Deduction.modusPonens (Deduction.premise ((ih_ψ ⟨Ω, hΩ⟩).mp h.1))
+              (Deduction.axiom' (Axiom.conjIntro ψ χ))))
+      · intro h
+        simp [satisfies]
+        exact ⟨ (ih_ψ ⟨Ω, hΩ⟩).mpr (mcs_is_closed (Deduction.modusPonens (Deduction.premise h)
+                  (Deduction.axiom' (Axiom.conjElimL ψ χ))))
+              , (ih_χ ⟨Ω, hΩ⟩).mpr (mcs_is_closed (Deduction.modusPonens (Deduction.premise h)
+                  (Deduction.axiom' (Axiom.conjElimR ψ χ)))) ⟩
+  | diamond α ψ _ ih =>
+      intro ⟨Ω, hΩ⟩
+      constructor
+      · intro h
+        simp [satisfies] at h
+        obtain ⟨⟨Δ, hΔ_reach⟩, h_rel, h_sat⟩ := h
+        have hψ_in : ψ ∈ Δ.val := (ih ⟨Δ, hΔ_reach⟩).mp h_sat
+        by_contra h_not
+        exact mcs_no_contradiction hψ_in
+          (h_rel (mcs_is_closed (Deduction.modusPonens
+            (Deduction.premise (mcs_complete h_not))
+            (weakening (Set.empty_subset _) (neg_diamond_to_box_neg α ψ)))))
+      · intro h
+        simp [satisfies]
+        obtain ⟨Δ, h_rel, hψ⟩ := existence_lemma h
+        have hΔ_reach : Δ ∈ reachableWorlds Γ := reach_closed hΩ h_rel
+        exact ⟨⟨Δ, hΔ_reach⟩, h_rel, (ih ⟨Δ, hΔ_reach⟩).mpr hψ⟩
+  | atomic p => trivial
+  | comp α β _ _ => trivial
+  | choice α β _ _ => trivial
+  | iter α _ => trivial
+  | parallel α β _ _ => trivial
+  | test φ _ => trivial
+  | s₁ => trivial
+  | s₂ => trivial
+  | r₁ => trivial
+  | r₂ => trivial
+
+lemma submodel_truth : ∀ {Γ : MaximalConsistentSet}
+    {w : (generatedSubmodel Γ).F.W} {φ : Formula},
+    ((generatedSubmodel Γ, w) ⊨ φ) ↔ φ ∈ w.val.val :=
+  λ {Γ w φ} => submodel_truth_aux Γ φ w
 
 end CanonicalModel
 open CanonicalModel
@@ -1038,15 +1206,12 @@ lemma contrapositive_completeness : ∀ {φ : Formula},
     exact Decidable.not_not.mp h_not_prov
   obtain ⟨Γ, h₂⟩ := Lindenbaum.lindenbaum h₁
   have h₃ : (¬ φ) ∈ Γ.val := h₂ (Set.mem_singleton (¬ φ))
-  have h₄ : φ ∉ Γ.val := by
-    by_contra h_in
-    have h_not_in : (¬ φ) ∉ Γ.val := mcs_no_contradiction h_in
-    exact h_not_in h₃
+  have h₄ : φ ∉ Γ.val := λ h_in => mcs_no_contradiction h_in h₃
   use generatedSubmodel Γ, generatedSubmodelProperStandard Γ
   intro h_global_sat
   have h_sat : (generatedSubmodel Γ, gamma_is_world Γ) ⊨ φ := h_global_sat
-  rw [submodel_truth_at_gamma] at h_sat
-  exact h₄ h_sat
+  have h_in : φ ∈ (gamma_is_world Γ).val.val := submodel_truth.mp h_sat
+  exact h₄ h_in
 
 theorem completeness : ∀ {φ : Formula},
     (⊨ φ) →
@@ -1054,5 +1219,4 @@ theorem completeness : ∀ {φ : Formula},
   intros φ h_valid
   by_contra h_not_prov
   obtain ⟨M, _, h_not_global_sat⟩ := contrapositive_completeness h_not_prov
-  have h_global_sat : M ⊨ φ := h_valid rfl
-  exact h_not_global_sat h_global_sat
+  exact h_not_global_sat (h_valid rfl)

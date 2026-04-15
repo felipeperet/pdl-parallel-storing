@@ -67,14 +67,19 @@ class Standard (M : Model) extends Standard₀ M where
 /-- A set of structured states is a triple (S, E, ⋆) where:
       - S is a non-empty set,
       - E is an equivalence relation on S,
-      - ⋆ : S × S → S is injective (s₁ ⋆ s₂ = t₁ ⋆ t₂ ↔ s₁ = t₁ ∧ s₂ = t₂).
+      - ⋆ : S × S → 𝒫(S) associates each pair of states with a set of possible combinations,
+      - ⋆ is separated: if z ∈ x ⋆ y and z ∈ x' ⋆ y', then x = x' and y = y'
+                        (each state has at most one decomposition),
+      - ⋆ is serial: for all x y, there exists z ∈ x ⋆ y
+                     (every pair of states can be combined).
 -/
 class State (S : Type) where
   [nonempty : Nonempty S]
   E : S → S → Prop
   [equiv : Equivalence E]
-  star : S → S → S
-  [inject : ∀ {s₁ t₁ s₂ t₂}, (star s₁ t₁ = star s₂ t₂) ↔ (s₁ = s₂) ∧ t₁ = t₂]
+  star : S → S → Set S
+  [separated : ∀ {z x y x' y'}, (z ∈ star x y) → (z ∈ star x' y') → (x = x') ∧ y = y']
+  [serial : ∀ (x y : S), ∃ z, z ∈ star x y]
 
 infix:50 " ≈ " => State.E
 infixr:85 " ⋆ " => State.star
@@ -92,24 +97,28 @@ instance {F : Frame} [SF : Structured F] : State F.W := SF.S
 
 /-- A proper frame is a structured frame where the store/retrieve programs have their
     intended semantics:
-      - R(s₁)(s', t') iff ∃ s t, s' = s ∧ t' = s ⋆ t  (store into first coordinate),
-      - R(s₂)(s', t') iff ∃ s t, s' = t ∧ t' = s ⋆ t  (store into second coordinate),
-      - R(r₁)(s', t') iff ∃ s t, s' = s ⋆ t ∧ t' = s  (retrieve first coordinate),
-      - R(r₂)(s', t') iff ∃ s t, s' = s ⋆ t ∧ t' = t  (retrieve second coordinate).
+      - R(s₁)(s', t') iff ∃ s t, s' = s ∧ t' ∈ s ⋆ t  (store into first coordinate),
+      - R(s₂)(s', t') iff ∃ s t, s' = t ∧ t' ∈ s ⋆ t  (store into second coordinate),
+      - R(r₁)(s', t') iff ∃ s t, s' ∈ s ⋆ t ∧ t' = s  (retrieve first coordinate),
+      - R(r₂)(s', t') iff ∃ s t, s' ∈ s ⋆ t ∧ t' = t  (retrieve second coordinate).
+
+    Note: with set-valued ⋆, the store programs are non-deterministic (there may be
+    multiple ways to combine two states), while the retrieve programs are deterministic
+    (each combined state has at most one decomposition, by the separated condition).
 -/
 class Proper (F : Frame) extends Structured F where
-  s₁ : ∀ {s' t'}, F.R s₁ s' t' ↔ ∃ s t, (s' = s) ∧ t' = s ⋆ t
-  s₂ : ∀ {s' t'}, F.R s₂ s' t' ↔ ∃ s t, (s' = t) ∧ t' = s ⋆ t
-  r₁ : ∀ {s' t'}, F.R r₁ s' t' ↔ ∃ s t, (s' = s ⋆ t) ∧ t' = s
-  r₂ : ∀ {s' t'}, F.R r₂ s' t' ↔ ∃ s t, (s' = s ⋆ t) ∧ t' = t
+  s₁ : ∀ {s' t'}, F.R s₁ s' t' ↔ ∃ s t, (s' = s) ∧ t' ∈ s ⋆ t
+  s₂ : ∀ {s' t'}, F.R s₂ s' t' ↔ ∃ s t, (s' = t) ∧ t' ∈ s ⋆ t
+  r₁ : ∀ {s' t'}, F.R r₁ s' t' ↔ ∃ s t, (s' ∈ s ⋆ t) ∧ t' = s
+  r₂ : ∀ {s' t'}, F.R r₂ s' t' ↔ ∃ s t, (s' ∈ s ⋆ t) ∧ t' = t
 
 /-- A proper frame with parallel composition. Extends a proper frame with:
       - R(π₁ ‖ π₂)(s', t') iff
-        ∃ s₁ t₁ s₂ t₂, s' = s₁ ⋆ t₁ ∧ t' = s₂ ⋆ t₂ ∧ R(π₁)(s₁, s₂) ∧ R(π₂)(t₁, t₂).
+        ∃ s₁ t₁ s₂ t₂, s' ∈ s₁ ⋆ t₁ ∧ t' ∈ s₂ ⋆ t₂ ∧ R(π₁)(s₁, s₂) ∧ R(π₂)(t₁, t₂).
 -/
 class ProperParallel (F : Frame) extends Proper F where
   parallel : ∀ {π₁ π₂ s' t'}, F.R (π₁ ‖ π₂) s' t' ↔
-    ∃ s₁ t₁ s₂ t₂, (s' = s₁ ⋆ t₁) ∧ (t' = s₂ ⋆ t₂) ∧ F.R π₁ s₁ s₂ ∧ F.R π₂ t₁ t₂
+    ∃ s₁ t₁ s₂ t₂, (s' ∈ s₁ ⋆ t₁) ∧ (t' ∈ s₂ ⋆ t₂) ∧ F.R π₁ s₁ s₂ ∧ F.R π₂ t₁ t₂
 
 /-- A proper standard₀ model: a proper frame equipped with a valuation, where composition
     and choice have their standard PDL semantics. This is the semantic class for RSPDL₀.
@@ -168,17 +177,13 @@ lemma s₁_comp_r₁ (F : Frame) [P : Proper F] : ∀ {s u : F.W},
     obtain ⟨t, hs₁, hr₁⟩ := hcomp
     rewrite [P.s₁] at hs₁
     rewrite [P.r₁] at hr₁
-    obtain ⟨s₁, t₁, hs_eq, ht_eq⟩ := hs₁
-    obtain ⟨s₂, t₂, ht_eq₂, hu_eq⟩ := hr₁
-    have h_eq : s₁ ⋆ t₁ = s₂ ⋆ t₂ := by rw [← ht_eq, ht_eq₂]
-    have s₁_eq_s₂ : s₁ = s₂ := (State.inject.mp h_eq).1
-    rewrite [hs_eq, hu_eq]
-    exact s₁_eq_s₂
+    obtain ⟨s₁, t₁, rfl, ht_mem⟩ := hs₁
+    obtain ⟨s₂, t₂, ht_mem₂, rfl⟩ := hr₁
+    exact (State.separated ht_mem ht_mem₂).1
   . intro h_eq
-    use s ⋆ s
-    simp [P.s₁, P.r₁]
-    use u
-    rw [h_eq]
+    subst h_eq
+    obtain ⟨z, hz⟩ := State.serial s s
+    exact ⟨z, P.s₁.mpr ⟨s, s, rfl, hz⟩, P.r₁.mpr ⟨s, s, hz, rfl⟩⟩
 
 /-- Property II) R(s₂) ; R(r₂) = Id.
 
@@ -193,117 +198,34 @@ lemma s₂_comp_r₂ (F : Frame) [P : Proper F] : ∀ {s u : F.W},
     obtain ⟨t, hs₂, hr₂⟩ := hcomp
     rewrite [P.s₂] at hs₂
     rewrite [P.r₂] at hr₂
-    obtain ⟨s₁, t₁, hs_eq, ht_eq⟩ := hs₂
-    obtain ⟨s₂, t₂, ht_eq₂, hu_eq⟩ := hr₂
-    have h_eq : s₁ ⋆ t₁ = s₂ ⋆ t₂ := by rw [← ht_eq, ht_eq₂]
-    have t₁_eq_t₂ : t₁ = t₂ := (State.inject.mp h_eq).2
-    rewrite [hs_eq, hu_eq]
-    exact t₁_eq_t₂
+    obtain ⟨s₁, t₁, rfl, ht_mem⟩ := hs₂
+    obtain ⟨s₂, t₂, ht_mem₂, rfl⟩ := hr₂
+    exact (State.separated ht_mem ht_mem₂).2
   . intro h_eq
-    use s ⋆ s
-    simp [P.s₂, P.r₂]
-    constructor <;> use u <;> rw [h_eq]
+    subst h_eq
+    obtain ⟨z, hz⟩ := State.serial s s
+    exact ⟨z, P.s₂.mpr ⟨s, s, rfl, hz⟩, P.r₂.mpr ⟨s, s, hz, rfl⟩⟩
 
 /-- Property III) R(s₁) ; R(r₂) = E.
 
-    Storing into the first coordinate and then retrieving the second coordinate relates exactly
-    the E-equivalent states. -/
+    Storing into the first coordinate and then retrieving the second coordinate relates
+    exactly the E-equivalent states. -/
 @[simp]
 lemma s₁_comp_r₂ (F : Frame) [P : Proper F] : ∀ {s t : F.W},
     Relation.Comp (F.R s₁) (F.R r₂) s t ↔ s ≈ t := by
   intros s t
   constructor
   . intro hcomp
-    obtain ⟨_, hs₁, hr₂⟩ := hcomp
-    rewrite [P.s₁, P.r₂] at *
-    obtain ⟨s₁, t₁, hs_eq, hu_eq⟩ := hs₁
-    obtain ⟨s₂, t₂, hu_eq₂, ht_eq⟩ := hr₂
-    have h_eq : s₁ ⋆ t₁ = s₂ ⋆ t₂ := by rw [← hu_eq, hu_eq₂]
-    have ⟨_, t₁_eq_t₂⟩ := State.inject.mp h_eq
-    rewrite [hs_eq, ht_eq, ← t₁_eq_t₂]
-    have h₁ : s₁ ≈ (s₁ ⋆ t₁) := by
-      apply Structured.respects_equiv
-      rewrite [P.s₁]
-      use s₁, t₁
-    have h₂ : t₁ ≈ (s₁ ⋆ t₁) := by
-      apply Structured.respects_equiv
-      rewrite [P.s₂]
-      use s₁, t₁
-    have h₃ : (s₁ ⋆ t₁) ≈ t₁ := State.equiv.symm h₂
-    exact State.equiv.trans h₁ h₃
-  . intro _
-    use s ⋆ t
-    rewrite [P.s₁, P.r₂] at *
-    constructor
-    . use s, t
-    . use s, t
-
-/-- Property IV) (R(r₁) ; R(s₁)) ∩ (R(r₂) ; R(s₂)) ⊆ Id.
-
-    If two states are related by both retrieve-then-store compositions, they must be equal. -/
-@[simp]
-lemma r₁_s₁_inter_r₂_s₂ (F : Frame) [P : Proper F] : ∀ {s t : F.W},
-    (Relation.Comp (F.R r₁) (F.R s₁) s t ∧ Relation.Comp (F.R r₂) (F.R s₂) s t) →
-    s = t := by
-  intros s t hcomp
-  obtain ⟨hcomp₁, hcomp₂⟩ := hcomp
-  obtain ⟨i₁, hr₁, hs₁⟩ := hcomp₁
-  obtain ⟨i₂, hr₂, hs₂⟩ := hcomp₂
-  rewrite [P.s₁, P.s₂, P.r₁, P.r₂] at *
-  obtain ⟨s₁, t₁, hs_eq₁, hi₁_eq₁⟩ := hr₁
-  obtain ⟨s₂, t₂, hi₁_eq₂, ht_eq₁⟩ := hs₁
-  obtain ⟨s₃, t₃, hs_eq₂, hi₂_eq₁⟩ := hr₂
-  obtain ⟨s₄, t₄, hi₂_eq₂, ht_eq₂⟩ := hs₂
-  conv at ht_eq₂ =>
-    rhs
-    arg 2
-    rewrite [← hi₂_eq₂, hi₂_eq₁]
-  conv at ht_eq₁ =>
-    rhs
-    arg 1
-    rewrite [← hi₁_eq₂, hi₁_eq₁]
-  have h₁ : s₁ ⋆ t₁ = s₃ ⋆ t₃ := by rw [← hs_eq₁, hs_eq₂]
-  have ⟨_, t₁_eq_t₃⟩ := State.inject.mp h₁
-  have h₂ : s₁ ⋆ t₂ = s₄ ⋆ t₃ := by rw [← ht_eq₁, ht_eq₂]
-  have ⟨_, t₂_eq_t₃⟩ := State.inject.mp h₂
-  have t₁_eq_t₂ : t₁ = t₂ := by rw [t₁_eq_t₃, ← t₂_eq_t₃]
-  rw [hs_eq₁, ht_eq₁, ← t₁_eq_t₂]
-
-/-- Property V) R(r₁) ; E = R(r₂) ; E.
-
-    Retrieving either coordinate and then stepping by equivalence yields the same relation. -/
-@[simp]
-lemma r₁_E_eq_r₂_E (F : Frame) [P : Proper F] : ∀ {s t : F.W},
-    Relation.Comp (F.R r₁) State.E s t ↔ Relation.Comp (F.R r₂) State.E s t := by
-  intros s t
-  constructor
-  . intros comp
-    obtain ⟨i, hr₁, equiv⟩ := comp
-    rewrite [P.r₁] at hr₁
-    obtain ⟨s₁, t₁, s_eq, i_eq⟩ := hr₁
-    use t₁
-    constructor
-    . rewrite [P.r₂, s_eq]
-      use s₁, t₁
-    . rewrite [← s₁_comp_r₂]
-      use t₁ ⋆ t
-      constructor
-      . rewrite [P.s₁]
-        use t₁, t
-      . rewrite [P.r₂]
-        use t₁, t
-  . intros comp
-    obtain ⟨i, hr₂, equiv⟩ := comp
+    obtain ⟨z, hs₁, hr₂⟩ := hcomp
+    rewrite [P.s₁] at hs₁
     rewrite [P.r₂] at hr₂
-    obtain ⟨s₁, t₁, s_eq, i_eq⟩ := hr₂
-    use s₁
-    constructor
-    . rewrite [s_eq, P.r₁]
-      use s₁, t₁
-    . rewrite [← s₁_comp_r₂]
-      use s₁ ⋆ t
-      constructor
-      . rewrite [P.s₁]
-        use s₁, t
-      . rewrite [P.r₂]
-        use s₁, t
+    obtain ⟨a, b, rfl, hz_mem⟩ := hs₁
+    obtain ⟨c, d, hz_mem₂, rfl⟩ := hr₂
+    have ⟨_, h_eq⟩ := State.separated hz_mem hz_mem₂
+    subst h_eq
+    have h₁ : s ≈ z := Structured.respects_equiv (P.s₁.mpr ⟨s, b, rfl, hz_mem⟩)
+    have h₂ : b ≈ z := Structured.respects_equiv (P.s₂.mpr ⟨s, b, rfl, hz_mem⟩)
+    exact State.equiv.trans h₁ (State.equiv.symm h₂)
+  . intro _
+    obtain ⟨z, hz⟩ := State.serial s t
+    exact ⟨z, P.s₁.mpr ⟨s, t, rfl, hz⟩, P.r₂.mpr ⟨s, t, hz, rfl⟩⟩

@@ -53,6 +53,8 @@ inductive Axiom : Formula → Prop where
   | storeRestoreDiamond φ : Axiom (φ → ([s₁ ; r₂] ⟨s₁ ; r₂⟩ φ))
   -- Axiom 11
   | storeRestoreIterate φ : Axiom (([s₁ ; r₂] φ) → ([s₁ ; r₂] [s₁ ; r₂] φ))
+  -- Axiom 12
+  | equivSubsume α φ : Axiom (([s₁ ; r₂] φ) → ([α] φ))
 
 /-- Deduction system with context.
 -/
